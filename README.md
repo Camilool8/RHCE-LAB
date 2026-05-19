@@ -69,12 +69,12 @@ Work the tasks in `lab/tasks/`; check yourself against `lab/solutions/`.
 
 ```bash
 # Take a clean baseline after first provisioning
-VBoxManage snapshot rhce-ansible-control snapshot take clean
-VBoxManage snapshot rhce-node1 snapshot take clean
+VBoxManage snapshot rhce-ansible-control take clean
+VBoxManage snapshot rhce-node1 take clean
 # ... repeat for node2..node5 and rhce-repo-server
 
 # Restore
-VBoxManage snapshot rhce-node1 snapshot restore clean
+VBoxManage snapshot rhce-node1 restore clean
 vagrant up node1
 ```
 
@@ -99,7 +99,7 @@ vagrant up [name]
 vagrant halt
 vagrant ssh control
 vagrant destroy -f
-VBoxManage snapshot <vm> snapshot list
+VBoxManage snapshot <vm> list
 ```
 
 ## Troubleshooting
