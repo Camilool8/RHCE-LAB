@@ -537,6 +537,8 @@ def lab_apply_basics(m, vm_cfg, vm_name, vm_index)
     # Deterministic MAC on the socket_vmnet lab segment. Last octet = 0x40+index
     # so VMs are easy to identify (repo=:40, control=:41, node1..5=:42..:46).
     lab_mac  = "52:54:00:00:00:%02x" % (0x40 + vm_index)
+    # TCG-emulated boot can be very slow; bump SSH wait window.
+    m.vm.boot_timeout = 1200 if PROVIDER == 'qemu' && LAB_ARCH != HOST_ARCH
     m.vm.provider 'qemu' do |qe|
       qe.memory   = "#{vm_cfg['memory']}M"
       qe.smp      = vm_cfg['cpus'].to_s
