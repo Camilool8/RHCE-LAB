@@ -1,63 +1,139 @@
 # RHCE-LAB
 
 Automated RHCE 9 (EX294) practice lab — a 7-VM Ansible environment deployed
-with Vagrant + VirtualBox. Companion to RHCSA-LAB.
+with Vagrant. Companion to RHCSA-LAB. Runs on macOS (Intel and Apple Silicon),
+Linux (x86_64 and arm64), and Windows.
 
 > Grading automation and the `bin/rhce-lab` exam CLI are delivered by a
 > follow-up plan (Grading & Exam Tooling). This README covers the
 > infrastructure and manual practice workflow.
 
-## Prerequisites
+## Supported scenarios
 
-- VirtualBox 7.0+
-- Vagrant 2.4+
-- Host resources: ~10 GB free RAM, ~80 GB disk, virtualization enabled
-- Internet access on first `vagrant up` (box download, packages, task 6
-  Galaxy roles, task 18 execution-environment image)
+| Scenario | Host | Auto-selected provider | Plugin to install |
+|---|---|---|---|
+| **A. Native x86_64** | macOS Intel | `virtualbox` | (built-in) |
+| | Linux x86_64 | `libvirt` | `vagrant-libvirt` |
+| | Windows x86_64 | `virtualbox` | (built-in) |
+| **B. Native arm64** | macOS Apple Silicon | `parallels` | `vagrant-parallels` |
+| | Linux arm64 | `libvirt` (kvm) | `vagrant-libvirt` |
+| **C. arm64 → x86 emulation** | macOS Apple Silicon | `qemu` + `socket_vmnet` | `vagrant-qemu` |
+| | Linux arm64 | `libvirt` (tcg) | `vagrant-libvirt` |
 
-## Topology
+`vmware_desktop` is supported as a fallback on every host that has VMware
+Fusion or Workstation installed (free for personal use post-Broadcom).
 
-| VM       | Hostname          | IP             | RAM     | Role                         |
-|----------|-------------------|----------------|---------|------------------------------|
-| repo     | repo-server       | 192.168.56.40  | 1 GB    | HTTP repos + NFS + GPG key   |
-| control  | ansible-control   | 192.168.56.50  | 2 GB    | Ansible control node         |
-| node1    | node1             | 192.168.56.51  | 1.25 GB | managed node — group `dev`   |
-| node2    | node2             | 192.168.56.52  | 1.25 GB | managed node — group `test`  |
-| node3    | node3             | 192.168.56.53  | 1.25 GB | managed node — group `prod`  |
-| node4    | node4             | 192.168.56.54  | 1.25 GB | managed node — group `prod`  |
-| node5    | node5             | 192.168.56.55  | 1.25 GB | managed node — group `balancers` |
+Selection order:
+1. `vagrant up --provider <name>` (CLI flag)
+2. `LAB_PROVIDER=<name>` env var
+3. `providers.default` in `config.yaml`
+4. Auto-detect from `(host_os, host_arch, lab_arch)`
 
-All values are tunable in `config.yaml`.
+`LAB_ARCH=x86_64` on an arm64 host forces Scenario C.
 
-## Quick Start
+## Prerequisites by host
+
+### macOS Intel
+- Install [VirtualBox 7.x](https://www.virtualbox.org/wiki/Downloads) and
+  [Vagrant 2.4+](https://www.vagrantup.com/downloads).
+
+### macOS Apple Silicon — Scenario B (native arm64)
+- Install [Parallels Desktop](https://www.parallels.com/products/desktop/) Pro
+  or Business edition.
+- `vagrant plugin install vagrant-parallels`
+
+### macOS Apple Silicon — Scenario C (qemu + socket_vmnet)
+- `brew install qemu socket_vmnet`
+- `vagrant plugin install vagrant-qemu`
+- Run the one-time host setup:
+  ```bash
+  ./scripts/host/setup-socket-vmnet.sh
+  ```
+  This installs a launchd daemon that runs `socket_vmnet` in shared mode on
+  the lab subnet (`192.168.56.0/24` by default). It needs `sudo` once.
+  Subsequent `vagrant up` runs do not need `sudo`.
+- Force this scenario explicitly when you also have Parallels:
+  ```bash
+  LAB_PROVIDER=qemu LAB_ARCH=x86_64 vagrant up
+  ```
+
+### Linux x86_64 or arm64
+- Install Vagrant 2.4+, qemu, and libvirt:
+  - Fedora/AlmaLinux/Rocky: `sudo dnf install @virtualization libguestfs-tools libvirt-devel`
+  - Debian/Ubuntu: `sudo apt install qemu-system libvirt-daemon-system libvirt-dev ebtables libguestfs-tools`
+- `sudo systemctl enable --now libvirtd`
+- `vagrant plugin install vagrant-libvirt`
+- For Scenario C on arm64 Linux: also install `qemu-system-x86_64` and set
+  `LAB_ARCH=x86_64`.
+
+### Windows x86_64
+- Install VirtualBox 7.x and Vagrant 2.4+. Disable Hyper-V (or accept
+  the VirtualBox-on-Hyper-V coexistence performance penalty).
+
+## Quick start
 
 ```bash
 cd RHCE-LAB
 cp /path/to/AlmaLinux-9-DVD.iso iso/      # optional — see iso/README.md
-vagrant up                                 # 15-25 min on first run
+vagrant up                                 # ~15-25 min on first run (native);
+                                           # significantly longer under TCG emulation
 ```
+
+The Vagrantfile prints the chosen provider on the first line:
+
+```
+==> RHCE-LAB: host=macos/arm64 lab_arch=x86_64 provider=qemu box_arch=amd64
+```
+
+## Topology
+
+| Vagrant name | Hostname          | IP            | RAM     | Role                       |
+|--------------|-------------------|---------------|---------|----------------------------|
+| repo         | repo-server       | 192.168.56.40 | 1 GB    | HTTP repos + NFS + GPG key |
+| control      | ansible-control   | 192.168.56.50 | 2 GB    | Ansible control node       |
+| node1        | node1             | 192.168.56.51 | 1.25 GB | managed node — `dev`       |
+| node2        | node2             | 192.168.56.52 | 1.25 GB | managed node — `test`      |
+| node3        | node3             | 192.168.56.53 | 1.25 GB | managed node — `prod`      |
+| node4        | node4             | 192.168.56.54 | 1.25 GB | managed node — `prod`      |
+| node5        | node5             | 192.168.56.55 | 1.25 GB | managed node — `balancers` |
+
+Edit `config.yaml` to tune subnet, RAM/CPU, node count, etc.
 
 ## Accounts
 
-- `student` / `1234` — the RHCE practice user (all task paths use `/home/student`)
-- `redhat` / `redhat` — convenience admin account
+- `student` / `1234` — the RHCE practice user (every task path uses `/home/student`).
+- `redhat` / `redhat` — convenience admin.
 - Both have passwordless `sudo`.
 
 The control node holds the `RH294-LAB` SSH key at
 `/home/student/.ssh/RH294-LAB`; its public key is authorized for `student` on
 every managed node.
 
-## Practice Workflow
+## Storage layout (managed nodes)
+
+Each managed node carries two extra virtual disks. Their device names depend
+on the provider:
+
+| Provider | First extra | Second extra |
+|---|---|---|
+| virtualbox, parallels, vmware_desktop | `/dev/sdb` | `/dev/sdc` |
+| libvirt, qemu | `/dev/vdb` | `/dev/vdc` |
+
+The first extra disk is left raw for task 17. The second extra disk is
+pre-built into the volume group `research` for task 16. Provisioning scripts
+detect either device-name family — students writing playbooks should accept
+both forms.
+
+## Practice workflow
 
 ```bash
 vagrant ssh control
-sudo -iu student          # become the practice user
-
+sudo -iu student
 # Task 1 asks you to build the inventory and ansible.cfg.
 # A reference ansible.cfg is in the repo at files/ansible.cfg.
 ```
 
-Verify connectivity once your inventory exists:
+Verify connectivity:
 
 ```bash
 ansible all -m ping
@@ -65,33 +141,38 @@ ansible all -m ping
 
 Work the tasks in `lab/tasks/`; check yourself against `lab/solutions/`.
 
-### Snapshots and reset
+## Snapshots and reset
+
+Provider-specific commands:
 
 ```bash
-# Take a clean baseline after first provisioning
+# VirtualBox
 VBoxManage snapshot rhce-ansible-control take clean
-VBoxManage snapshot rhce-node1 take clean
-# ... repeat for node2..node5 and rhce-repo-server
+VBoxManage snapshot rhce-node1           take clean
+VBoxManage snapshot rhce-node1           restore clean
 
-# Restore
-VBoxManage snapshot rhce-node1 restore clean
-vagrant up node1
+# libvirt
+sudo virsh snapshot-create-as rhce-ansible-control clean
+sudo virsh snapshot-revert    rhce-ansible-control clean
+
+# Parallels
+prlctl snapshot rhce-ansible-control -n clean
+prlctl snapshot-switch rhce-ansible-control -i <snapshot-id>
+
+# qemu — snapshot the qcow2 disks (VM must be off)
+qemu-img snapshot -c clean .vagrant/machines/node1/qemu/box.img
+qemu-img snapshot -a clean .vagrant/machines/node1/qemu/box.img
 ```
 
-## Repositories
+## Override env vars
 
-- `http://192.168.56.40/repo/BaseOS/` and `/AppStream/` — HTTP repos.
-- Each managed node NFS-mounts those trees at `/mnt/BaseOS` and
-  `/mnt/AppStream` (used by task 2's `file://` repositories).
-- With an ISO in `iso/`, the repos hold the full package set. Without one,
-  they are empty-but-valid structures and nodes use AlmaLinux internet repos.
+```bash
+LAB_PROVIDER=qemu       vagrant up           # force qemu, even if parallels is auto-selected
+LAB_ARCH=x86_64         vagrant up           # force x86 emulation on an arm64 host
+vagrant up --provider libvirt                # Vagrant's native CLI flag also works
+```
 
-## Storage layout (managed nodes)
-
-- `/dev/sdb` — 2 GB, raw/unpartitioned — used by task 17.
-- `/dev/sdc` — 2 GB, pre-built into volume group `research` — used by task 16.
-
-## Common Commands
+## Common commands
 
 ```bash
 vagrant status
@@ -99,19 +180,25 @@ vagrant up [name]
 vagrant halt
 vagrant ssh control
 vagrant destroy -f
-VBoxManage snapshot <vm> list
 ```
 
 ## Troubleshooting
 
-- **ISO not detected:** confirm a single `*.iso` in `iso/`, then
-  `vagrant reload --provision repo`.
-- **`ansible all -m ping` fails:** confirm your inventory uses `node1`..`node5`
-  and `ansible.cfg` sets `private_key_file = ~/.ssh/RH294-LAB`.
-- **NFS `/mnt` not mounted on a node:** `sudo mount -a` (the repo server may
-  have provisioned after the node).
-- **ISO attach fails on `vagrant up`:** the box may name its storage
-  controller differently; adjust `--storagectl` in the Vagrantfile.
+- **"no provider matches host=..."** — auto-detection didn't match; set
+  `LAB_PROVIDER` or `providers.default`.
+- **socket_vmnet not running (qemu only)** — re-run
+  `./scripts/host/setup-socket-vmnet.sh`, then check `sudo launchctl list | grep socket_vmnet`.
+- **`vagrant up` very slow under Scenario C** — TCG emulation is 5–20× slower
+  than native. First provisioning can take hours; subsequent `dnf` operations
+  also pay the tax. Take a snapshot once provisioned.
+- **Box variant missing for chosen provider** — verify with
+  `curl -s https://app.vagrantup.com/api/v2/box/almalinux/9 | jq '.versions[0].providers[] | {name, architecture}'`.
+  Fall back to `almalinux/9.aarch64` on arm64 if needed (edit `box.name` in
+  `config.yaml`).
+- **NFS `/mnt` not mounted on a node** — `sudo mount -a` (the repo server may
+  have provisioned slightly after the node).
+- **ansible-navigator EE pull fails** — provisioning continues; run with
+  `--execution-environment false` until the image is pulled manually.
 
 ## License
 
