@@ -1,6 +1,6 @@
 16. Create & use a logical volume:
 
-Create a playbook called /home/x69van/ansible/lvm.yml that runs on all the managed nodes and does the following:
+Create a playbook called /home/student/ansible/lvm.yml that runs on all the managed nodes and does the following:
 
     a) Creates a logical volume with the following requirements:
     i. The logical volume is created in the research volume group.

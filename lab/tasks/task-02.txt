@@ -1,4 +1,4 @@
-2. Create a playbook called /home/x69van/ansible/yum-repo.yml. As a system administrator, you will need to install software on the managed nodes:
+2. Create a playbook called /home/student/ansible/yum-repo.yml. As a system administrator, you will need to install software on the managed nodes:
 
     a) Create the yum repositories on each of the managed nodes as per the following details:
     b) NOTE: you need to create 2 repos (BaseOS & AppStream) in the managed nodes.

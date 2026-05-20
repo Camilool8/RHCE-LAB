@@ -52,7 +52,7 @@ box:
   name: "almalinux/9"
 
 lab:
-  ansible_user: "x69van"
+  ansible_user: "student"
   ssh_key_name: "RH294-LAB"
   time_server: "172.25.254.250"
 ```
@@ -151,12 +151,12 @@ nnoremap <leader>K :set splitright<CR>:vnew<CR>:setlocal buftype=nofile<CR>:r! a
 
 ```ini
 # Sample ansible.cfg for reference (RHCE-LAB).
-# Task 1 asks you to create your own at /home/x69van/ansible/ansible.cfg.
+# Task 1 asks you to create your own at /home/student/ansible/ansible.cfg.
 [defaults]
 inventory = ./inventory
 roles_path = ./roles
 collections_path = ./mycollection
-remote_user = x69van
+remote_user = student
 host_key_checking = False
 private_key_file = ~/.ssh/RH294-LAB
 
@@ -228,7 +228,7 @@ git commit -m "feat: add common base-setup provisioning script"
 ```bash
 #!/bin/bash
 # Creates the lab user accounts on every VM:
-#   x69van / 1234   (mandatory — all RHCE task paths use /home/x69van)
+#   student / 1234   (mandatory — all RHCE task paths use /home/student)
 #   redhat / redhat (convenience admin account)
 set -euo pipefail
 
@@ -244,7 +244,7 @@ create_user() {
   chmod 0440 "/etc/sudoers.d/${user}"
 }
 
-create_user x69van 1234
+create_user student 1234
 create_user redhat redhat
 
 # Enable password SSH (lab convenience).
@@ -463,14 +463,14 @@ echo "=== Managed node setup: $(hostname) ==="
 # --- Ansible-managed-node prerequisites ---
 dnf install -y python3 lvm2 nfs-utils
 
-# --- Authorize the RH294-LAB key for x69van (uploaded to /tmp by Vagrant) ---
-install -d -m 700 -o x69van -g x69van /home/x69van/.ssh
-touch /home/x69van/.ssh/authorized_keys
-cat /tmp/RH294-LAB.pub >> /home/x69van/.ssh/authorized_keys
-sort -u /home/x69van/.ssh/authorized_keys -o /home/x69van/.ssh/authorized_keys
-chown x69van:x69van /home/x69van/.ssh/authorized_keys
-chmod 600 /home/x69van/.ssh/authorized_keys
-restorecon -R /home/x69van/.ssh 2>/dev/null || true
+# --- Authorize the RH294-LAB key for student (uploaded to /tmp by Vagrant) ---
+install -d -m 700 -o student -g student /home/student/.ssh
+touch /home/student/.ssh/authorized_keys
+cat /tmp/RH294-LAB.pub >> /home/student/.ssh/authorized_keys
+sort -u /home/student/.ssh/authorized_keys -o /home/student/.ssh/authorized_keys
+chown student:student /home/student/.ssh/authorized_keys
+chmod 600 /home/student/.ssh/authorized_keys
+restorecon -R /home/student/.ssh 2>/dev/null || true
 
 # --- VG 'research' on /dev/sdc (task 16). /dev/sdb left raw for task 17. ---
 if [ -b /dev/sdc ]; then
@@ -520,7 +520,7 @@ git commit -m "feat: add managed-node provisioning script"
 ```bash
 #!/bin/bash
 # Control node setup: install Ansible tooling, install the RH294-LAB private
-# key for x69van, populate /etc/hosts, and pre-pull an execution environment.
+# key for student, populate /etc/hosts, and pre-pull an execution environment.
 # Args: repeated "<ip> <hostname>" pairs for every lab host.
 set -euo pipefail
 
@@ -535,15 +535,15 @@ if ! command -v ansible-navigator &>/dev/null; then
     || echo "WARN: ansible-navigator not installed (task 18 may need manual setup)"
 fi
 
-# --- RH294-LAB SSH key for x69van (uploaded to /tmp by Vagrant) ---
-install -d -m 700 -o x69van -g x69van /home/x69van/.ssh
-install -m 600 -o x69van -g x69van /tmp/RH294-LAB     /home/x69van/.ssh/RH294-LAB
-install -m 644 -o x69van -g x69van /tmp/RH294-LAB.pub /home/x69van/.ssh/RH294-LAB.pub
-restorecon -R /home/x69van/.ssh 2>/dev/null || true
+# --- RH294-LAB SSH key for student (uploaded to /tmp by Vagrant) ---
+install -d -m 700 -o student -g student /home/student/.ssh
+install -m 600 -o student -g student /tmp/RH294-LAB     /home/student/.ssh/RH294-LAB
+install -m 644 -o student -g student /tmp/RH294-LAB.pub /home/student/.ssh/RH294-LAB.pub
+restorecon -R /home/student/.ssh 2>/dev/null || true
 
 # --- Working directory and vimrc helper ---
-install -d -m 755 -o x69van -g x69van /home/x69van/ansible
-install -m 644 -o x69van -g x69van /tmp/vimrc /home/x69van/.vimrc
+install -d -m 755 -o student -g student /home/student/ansible
+install -m 644 -o student -g student /tmp/vimrc /home/student/.vimrc
 
 # --- /etc/hosts: args are repeated "<ip> <hostname>" pairs ---
 sed -i '/# RHCE-LAB BEGIN/,/# RHCE-LAB END/d' /etc/hosts
@@ -557,7 +557,7 @@ sed -i '/# RHCE-LAB BEGIN/,/# RHCE-LAB END/d' /etc/hosts
 } >> /etc/hosts
 
 # --- Pre-pull an execution environment for ansible-navigator (task 18) ---
-sudo -u x69van podman pull quay.io/ansible/creator-ee:latest 2>/dev/null \
+sudo -u student podman pull quay.io/ansible/creator-ee:latest 2>/dev/null \
   || echo "WARN: EE image pull failed — run ansible-navigator with '--execution-environment false'"
 
 echo "=== Control node setup complete ==="
@@ -821,19 +821,19 @@ vagrant up                                 # 15-25 min on first run
 
 ## Accounts
 
-- `x69van` / `1234` — the RHCE practice user (all task paths use `/home/x69van`)
+- `student` / `1234` — the RHCE practice user (all task paths use `/home/student`)
 - `redhat` / `redhat` — convenience admin account
 - Both have passwordless `sudo`.
 
 The control node holds the `RH294-LAB` SSH key at
-`/home/x69van/.ssh/RH294-LAB`; its public key is authorized for `x69van` on
+`/home/student/.ssh/RH294-LAB`; its public key is authorized for `student` on
 every managed node.
 
 ## Practice Workflow
 
 ```bash
 vagrant ssh control
-sudo -iu x69van          # become the practice user
+sudo -iu student          # become the practice user
 
 # Task 1 asks you to build the inventory and ansible.cfg.
 # A reference ansible.cfg is in the repo at files/ansible.cfg.
@@ -943,13 +943,13 @@ Expected: `1`
 Run: `vagrant ssh node1 -c "sudo vgs --noheadings -o vg_name research | tr -d ' '"`
 Expected: `research`
 
-- [ ] **Step 5: Verify the control node can SSH to every managed node as x69van**
+- [ ] **Step 5: Verify the control node can SSH to every managed node as student**
 
 Run:
 ```bash
-vagrant ssh control -c "sudo -iu x69van bash -lc '
+vagrant ssh control -c "sudo -iu student bash -lc '
 for n in node1 node2 node3 node4 node5; do
-  ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/RH294-LAB x69van@\$n hostname
+  ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/RH294-LAB student@\$n hostname
 done'"
 ```
 Expected: prints `node1` through `node5`, one per line.
@@ -958,10 +958,10 @@ Expected: prints `node1` through `node5`, one per line.
 
 Run:
 ```bash
-vagrant ssh control -c "sudo -iu x69van bash -lc '
+vagrant ssh control -c "sudo -iu student bash -lc '
 cd ~/ansible
 printf \"[all]\nnode1\nnode2\nnode3\nnode4\nnode5\n\" > inventory
-printf \"[defaults]\ninventory=./inventory\nremote_user=x69van\nhost_key_checking=False\nprivate_key_file=~/.ssh/RH294-LAB\n\" > ansible.cfg
+printf \"[defaults]\ninventory=./inventory\nremote_user=student\nhost_key_checking=False\nprivate_key_file=~/.ssh/RH294-LAB\n\" > ansible.cfg
 ansible all -m ping'"
 ```
 Expected: every node reports `SUCCESS` with `"ping": "pong"`.
@@ -970,10 +970,10 @@ Expected: every node reports `SUCCESS` with `"ping": "pong"`.
 
 Run:
 ```bash
-vagrant ssh control -c "rm -f /home/x69van/ansible/inventory /home/x69van/ansible/ansible.cfg"
+vagrant ssh control -c "rm -f /home/student/ansible/inventory /home/student/ansible/ansible.cfg"
 ```
 Expected: no output. (These were scratch files for the test; the lab leaves
-`/home/x69van/ansible/` empty for the user to build in task 1.)
+`/home/student/ansible/` empty for the user to build in task 1.)
 
 - [ ] **Step 8: Record the result**
 
@@ -995,7 +995,7 @@ done
 - Baked-in inventory groups — managed nodes are plain hosts; group membership
   is the student's job in task 1. The lab provides resolvable `node1`..`node5`
   (Task 10 `/etc/hosts`). ✓
-- Users `x69van`/`redhat` — Task 5. ✓
+- Users `student`/`redhat` — Task 5. ✓
 - `RH294-LAB` keypair generated on host and distributed — Tasks 9, 10, 11. ✓
 - AlmaLinux box + ISO auto-detect — Tasks 1, 6, 11. ✓
 - HTTP + NFS repos, `/mnt/BaseOS` on nodes — Tasks 6, 8, 9. ✓

@@ -25,7 +25,7 @@ Create `ansible.cfg` file with the following content:
 inventory=./inventory
 roles_path=./roles
 collections_path=./mycollection
-remote_user=x69van
+remote_user=student
 host_key_checking=False
 private_key_file=~/.ssh/RH294-LAB
 ```

@@ -1,6 +1,6 @@
 17. Create and use partitions:
 
-Create /home/x69van/ansible/partition.yml, which will create partitions on all the managed nodes: 
+Create /home/student/ansible/partition.yml, which will create partitions on all the managed nodes: 
 
     a) After sdb creating a 1200M primary partition, partition number 1, and format it into ext4 filesystem.
     b) On the prod group to permanently mount the partition to /srv directory.

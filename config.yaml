@@ -28,6 +28,6 @@ box:
   name: "almalinux/9"
 
 lab:
-  ansible_user: "x69van"
+  ansible_user: "student"
   ssh_key_name: "RH294-LAB"
   time_server: "172.25.254.250"

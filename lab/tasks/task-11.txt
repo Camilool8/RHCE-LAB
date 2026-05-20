@@ -1,4 +1,4 @@
-11. Create a playbook called /home/x69van/ansible/hwreport.yml that produces an output file called /root/hwreport.txt on all of the managed nodes with the following information:
+11. Create a playbook called /home/student/ansible/hwreport.yml that produces an output file called /root/hwreport.txt on all of the managed nodes with the following information:
 
     a) Inventory hostname
     b) Total memory in MB

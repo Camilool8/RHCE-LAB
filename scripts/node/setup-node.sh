@@ -11,14 +11,14 @@ echo "=== Managed node setup: $(hostname) ==="
 # --- Ansible-managed-node prerequisites ---
 dnf install -y python3 lvm2 nfs-utils
 
-# --- Authorize the RH294-LAB key for x69van (uploaded to /tmp by Vagrant) ---
-install -d -m 700 -o x69van -g x69van /home/x69van/.ssh
-touch /home/x69van/.ssh/authorized_keys
-cat /tmp/RH294-LAB.pub >> /home/x69van/.ssh/authorized_keys
-sort -u /home/x69van/.ssh/authorized_keys -o /home/x69van/.ssh/authorized_keys
-chown x69van:x69van /home/x69van/.ssh/authorized_keys
-chmod 600 /home/x69van/.ssh/authorized_keys
-restorecon -R /home/x69van/.ssh 2>/dev/null || true
+# --- Authorize the RH294-LAB key for student (uploaded to /tmp by Vagrant) ---
+install -d -m 700 -o student -g student /home/student/.ssh
+touch /home/student/.ssh/authorized_keys
+cat /tmp/RH294-LAB.pub >> /home/student/.ssh/authorized_keys
+sort -u /home/student/.ssh/authorized_keys -o /home/student/.ssh/authorized_keys
+chown student:student /home/student/.ssh/authorized_keys
+chmod 600 /home/student/.ssh/authorized_keys
+restorecon -R /home/student/.ssh 2>/dev/null || true
 
 # --- VG 'research' on /dev/sdc (task 16). /dev/sdb left raw for task 17. ---
 if [ -b /dev/sdc ]; then

@@ -73,12 +73,12 @@ as `/etc/hosts` aliases for compatibility with upstream answer keys.
 
 ### Users and access
 
-- `x69van` / password `1234` on all VMs (sudo). All task paths hardcode
-  `/home/x69van/ansible/...`, so this account name is mandatory.
+- `student` / password `1234` on all VMs (sudo). All task paths hardcode
+  `/home/student/ansible/...`, so this account name is mandatory.
 - `redhat` / password `redhat` on all VMs (sudo) — convenience admin account,
   matching `RHCSA-LAB` conventions.
 - SSH keypair `RH294-LAB` generated on the control node during provisioning and
-  its public key installed in `x69van`'s `authorized_keys` on every managed
+  its public key installed in `student`'s `authorized_keys` on every managed
   node. `ansible.cfg` references `~/.ssh/RH294-LAB`.
 
 ## OS and Repositories
@@ -121,7 +121,7 @@ Shell-script provisioning, organized like `RHCSA-LAB/scripts/`:
 scripts/
   common/
     base-setup.sh          # packages, firewalld, SELinux, HTTP repo client config
-    create-users.sh        # x69van + redhat accounts
+    create-users.sh        # student + redhat accounts
   repo-server/
     setup-repos.sh         # ISO-or-reposync -> /var/www/html/repo, httpd
     setup-nfs.sh           # NFS-export BaseOS/AppStream
@@ -130,7 +130,7 @@ scripts/
     setup-control.sh       # ansible-core, ansible-navigator, rhel-system-roles,
                            # RH294-LAB key gen + distribution, /etc/hosts,
                            # EE image pre-pull, sample ansible.cfg + .vimrc
-    install-grader.sh      # deploy grading harness to /home/x69van/grader
+    install-grader.sh      # deploy grading harness to /home/student/grader
   node/
     setup-node.sh          # authorize RH294-LAB key, build sdb/sdc + research VG,
                            # mount /mnt/{BaseOS,AppStream}, stage GPG key
@@ -175,7 +175,7 @@ matching the `rhcsa-` convention.
 
 ## Grading harness
 
-Deployed to `/home/x69van/grader/` on the control node by `install-grader.sh`:
+Deployed to `/home/student/grader/` on the control node by `install-grader.sh`:
 
 ```
 grader/
@@ -189,7 +189,7 @@ playbooks first; graders then verify the resulting end-state. Graders do **not**
 run the student's playbooks for them. Each `grade-NN.sh`:
 
 1. Checks the required artifact exists on the control node (e.g.
-   `/home/x69van/ansible/issue.yml`, `inventory`, `ansible.cfg`).
+   `/home/student/ansible/issue.yml`, `inventory`, `ansible.cfg`).
 2. Verifies the end-state on the relevant managed nodes via `ansible` ad-hoc
    commands or SSH (e.g. task 12: `/etc/issue` content per host group; task 5:
    HTTP `curl` of each webserver; task 16: `lvs` shows `data` in `research`).

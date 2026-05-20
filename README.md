@@ -39,19 +39,19 @@ vagrant up                                 # 15-25 min on first run
 
 ## Accounts
 
-- `x69van` / `1234` — the RHCE practice user (all task paths use `/home/x69van`)
+- `student` / `1234` — the RHCE practice user (all task paths use `/home/student`)
 - `redhat` / `redhat` — convenience admin account
 - Both have passwordless `sudo`.
 
 The control node holds the `RH294-LAB` SSH key at
-`/home/x69van/.ssh/RH294-LAB`; its public key is authorized for `x69van` on
+`/home/student/.ssh/RH294-LAB`; its public key is authorized for `student` on
 every managed node.
 
 ## Practice Workflow
 
 ```bash
 vagrant ssh control
-sudo -iu x69van          # become the practice user
+sudo -iu student          # become the practice user
 
 # Task 1 asks you to build the inventory and ansible.cfg.
 # A reference ansible.cfg is in the repo at files/ansible.cfg.

@@ -1,4 +1,4 @@
-12. Create a playbook called /home/x69van/ansible/issue.yml as per the following requirements:
+12. Create a playbook called /home/student/ansible/issue.yml as per the following requirements:
 
     a) The playbook runs on all inventory hosts.
     b) The playbook replaces the contents of /etc/issue with a single line of text based on the host group:

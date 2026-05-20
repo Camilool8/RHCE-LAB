@@ -1,4 +1,4 @@
-6. Use Ansible Galaxy with the requirements file called /home/x69van/ansible/roles/requirements.yml to download and install roles to /home/x69van/ansible/roles from the following URLs:
+6. Use Ansible Galaxy with the requirements file called /home/student/ansible/roles/requirements.yml to download and install roles to /home/student/ansible/roles from the following URLs:
 
     a) https://galaxy.ansible.com/download/zabbix-zabbix-1.0.6.tar.gz
       The name of this role should be zabbix.

@@ -806,12 +806,12 @@ Edit `config.yaml` to tune subnet, RAM/CPU, node count, etc.
 
 ## Accounts
 
-- `x69van` / `1234` — the RHCE practice user (every task path uses `/home/x69van`).
+- `student` / `1234` — the RHCE practice user (every task path uses `/home/student`).
 - `redhat` / `redhat` — convenience admin.
 - Both have passwordless `sudo`.
 
 The control node holds the `RH294-LAB` SSH key at
-`/home/x69van/.ssh/RH294-LAB`; its public key is authorized for `x69van` on
+`/home/student/.ssh/RH294-LAB`; its public key is authorized for `student` on
 every managed node.
 
 ## Storage layout (managed nodes)
@@ -833,7 +833,7 @@ both forms.
 
 ```bash
 vagrant ssh control
-sudo -iu x69van
+sudo -iu student
 # Task 1 asks you to build the inventory and ansible.cfg.
 # A reference ansible.cfg is in the repo at files/ansible.cfg.
 ```
@@ -969,13 +969,13 @@ Expected: `1`.
 Run: `vagrant ssh node1 -c "sudo vgs --noheadings -o vg_name research | tr -d ' '"`
 Expected: `research`.
 
-- [ ] **Step 6: Verify the control node can SSH to every managed node as x69van**
+- [ ] **Step 6: Verify the control node can SSH to every managed node as student**
 
 Run:
 ```bash
-vagrant ssh control -c "sudo -iu x69van bash -lc '
+vagrant ssh control -c "sudo -iu student bash -lc '
 for n in node1 node2 node3 node4 node5; do
-  ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/RH294-LAB x69van@\$n hostname
+  ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/RH294-LAB student@\$n hostname
 done'"
 ```
 Expected: prints `node1` through `node5`, one per line.
@@ -984,10 +984,10 @@ Expected: prints `node1` through `node5`, one per line.
 
 Run:
 ```bash
-vagrant ssh control -c "sudo -iu x69van bash -lc '
+vagrant ssh control -c "sudo -iu student bash -lc '
 cd ~/ansible
 printf \"[all]\nnode1\nnode2\nnode3\nnode4\nnode5\n\" > inventory
-printf \"[defaults]\ninventory=./inventory\nremote_user=x69van\nhost_key_checking=False\nprivate_key_file=~/.ssh/RH294-LAB\n\" > ansible.cfg
+printf \"[defaults]\ninventory=./inventory\nremote_user=student\nhost_key_checking=False\nprivate_key_file=~/.ssh/RH294-LAB\n\" > ansible.cfg
 ansible all -m ping'"
 ```
 Expected: every node reports `SUCCESS` with `"ping": "pong"`.
@@ -996,7 +996,7 @@ Expected: every node reports `SUCCESS` with `"ping": "pong"`.
 
 Run:
 ```bash
-vagrant ssh control -c "rm -f /home/x69van/ansible/inventory /home/x69van/ansible/ansible.cfg"
+vagrant ssh control -c "rm -f /home/student/ansible/inventory /home/student/ansible/ansible.cfg"
 ```
 
 Snapshot every VM's main qcow2 (qemu provider only):
