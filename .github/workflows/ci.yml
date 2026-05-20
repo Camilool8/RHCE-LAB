@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: "3.3"
       - run: ruby -c Vagrantfile
 
   yaml-lint:
@@ -60,5 +60,4 @@ jobs:
       - name: Check internal links (no external URLs)
         run: |
           lychee --offline --no-progress \
-            --exclude-path docs/superpowers \
-            'README.md' 'docs/**/*.md'
+            --exclude-path 'README.md' 'docs/**/*.md'
