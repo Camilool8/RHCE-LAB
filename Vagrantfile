@@ -168,15 +168,20 @@ def lab_attach_extra_disk(m, vm_name, idx, size_gb)
         ['set', :id, '--device-add', 'hdd', '--size', "#{size_gb * 1024}"]
     end
   when 'vmware_desktop'
-    # Broadcom (Apple Silicon Fusion KB 315602) recommends NVMe for all guests
-    # — SCSI is explicitly NOT recommended. vagrant-vmware-desktop 3.0.4+
-    # honours `bus_type` via the disk's `provider_config` hash (see the
-    # plugin's lib/vagrant-vmware-desktop/cap/disk.rb), no vmx surgery needed.
+    # Broadcom (Apple Silicon Fusion KB 315602) recommends NVMe for all
+    # guests — SCSI is explicitly NOT recommended. The plugin's high-level
+    # disk DSL takes provider-specific keys by passing them with the provider
+    # name as the hash key (see Vagrant's plugins/kernel_v2/config/vm.rb:disk
+    # which routes any Hash-valued option through add_provider_config; the
+    # plugin then reads disk.provider_config[:vmware_desktop][:bus_type] from
+    # lib/vagrant-vmware-desktop/cap/disk.rb). Wrapping under provider_config:
+    # is wrong — Vagrant treats provider_config as the provider's own name
+    # and never reaches our value.
     m.vm.disk :disk,
               name:    "#{vm_name}-extra#{idx}",
               size:    "#{size_gb}GB",
               primary: false,
-              provider_config: { vmware_desktop: { bus_type: 'nvme' } }
+              vmware_desktop: { bus_type: 'nvme' }
   end
 end
 

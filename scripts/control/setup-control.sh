@@ -23,14 +23,21 @@ echo "=== Control node setup ==="
 
 # --- Core packages ---
 # python3.11: ansible-dev-tools requires Python >= 3.10; AlmaLinux 9 ships
-#            python3.9 as the platform Python.
+#             python3.9 as the platform Python.
 # gcc + python3.11-devel + libffi-devel + openssl-devel + krb5-devel:
-#            build deps for cffi / cryptography / onigurumacffi when pip
-#            cannot find a prebuilt wheel for the host architecture.
+#             build deps for cffi / cryptography when pip has no prebuilt
+#             wheel for the host architecture.
+# oniguruma-devel (from EPEL): C header dependency of `onigurumacffi`, which
+#             ansible-navigator's TUI pulls in transitively. Without it,
+#             pip's source-build of onigurumacffi fails and the whole
+#             ansible-dev-tools install aborts.
+dnf install -y epel-release 2>/dev/null \
+  || echo "WARN: EPEL install failed (may already be present)"
+
 dnf install -y \
     ansible-core python3 python3-pip podman git tar createrepo_c \
     python3.11 python3.11-pip python3.11-devel \
-    gcc make libffi-devel openssl-devel krb5-devel \
+    gcc make libffi-devel openssl-devel krb5-devel oniguruma-devel \
     redhat-rpm-config \
   2>/dev/null \
   || echo "WARN: some control packages may already be installed"
@@ -72,18 +79,29 @@ install_navigator_via_rhel_subscription() {
 
 install_navigator_via_pip() {
   echo "Installing ansible-navigator via python3.11 -m pip --user (student)"
-  sudo -u student -H python3.11 -m pip install --user --upgrade pip wheel \
-    2>&1 | tail -3 || true
-  # ansible-dev-tools bundles ansible-navigator + ansible-creator + ansible-lint
-  # + molecule + ansible-builder. If the meta package fails (rare), fall back
-  # to just ansible-navigator.
-  if ! sudo -u student -H python3.11 -m pip install --user ansible-dev-tools 2>&1 | tail -5; then
-    sudo -u student -H python3.11 -m pip install --user ansible-navigator 2>&1 | tail -5
-  fi
+  # `runuser -l` runs a full login session (cwd=$HOME, no env from caller).
+  # Use a heredoc-style `-c` argument so the inner shell has all of pip's
+  # output visible, then tail to keep the Vagrant log readable.
+  runuser -l student -c '
+    set -o pipefail
+    python3.11 -m pip install --user --upgrade pip wheel 2>&1 | tail -3
+    # ansible-dev-tools bundles ansible-navigator + ansible-creator +
+    # ansible-lint + molecule + ansible-builder. If the meta-package fails
+    # (rare — needs all build deps), fall back to plain ansible-navigator.
+    if ! python3.11 -m pip install --user ansible-dev-tools 2>&1 | tail -8; then
+      python3.11 -m pip install --user ansible-navigator 2>&1 | tail -8
+    fi
+  '
 }
 
-if ! command -v ansible-navigator >/dev/null 2>&1 \
-   && ! sudo -u student bash -lc 'command -v ansible-navigator' >/dev/null 2>&1; then
+# Probe ansible-navigator from BOTH root and student PATHs (RHEL-subscription
+# install lands in /usr/bin; pip --user lands in /home/student/.local/bin).
+has_navigator() {
+  command -v ansible-navigator >/dev/null 2>&1 \
+    || runuser -l student -c 'command -v ansible-navigator' >/dev/null 2>&1
+}
+
+if ! has_navigator; then
   if ! install_navigator_via_rhel_subscription; then
     install_navigator_via_pip \
       || echo "WARN: ansible-navigator install failed — use --execution-environment false"
@@ -110,7 +128,11 @@ EOF
 chown student:student /home/student/.ansible-navigator.yml
 
 # Pre-pull the EE so the first navigator run works without internet.
-sudo -u student -H podman pull "$EE_IMAGE" 2>&1 | tail -3 \
+# `runuser -l student` opens a login session (cwd=/home/student); plain
+# `sudo -u student` inherits the caller's cwd which here is /home/vagrant
+# (unreadable by `student`) and causes podman to fail with "cannot chdir to
+# /home/vagrant: Permission denied".
+runuser -l student -c "podman pull '$EE_IMAGE'" 2>&1 | tail -3 \
   || echo "WARN: EE image pull failed — ansible-navigator --execution-environment false will still work"
 
 echo "=== Control node setup complete ==="
