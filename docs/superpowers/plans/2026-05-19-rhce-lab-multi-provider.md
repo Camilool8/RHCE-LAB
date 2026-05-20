@@ -483,7 +483,10 @@ HOST_ARGS << CTRL_IP << 'ansible-control'
 
 QEMU_CFG = settings.dig('providers', 'qemu') || {}
 
-def lab_apply_basics(m, vm_cfg, vm_name)
+def lab_apply_basics(m, vm_cfg, vm_name, vm_index)
+  # vm_index: 0=repo, 1=control, 2..6=node1..5. Used by the qemu provider
+  # to assign a unique SSH host-forward port and a deterministic MAC on the
+  # socket_vmnet lab interface.
   case PROVIDER
   when 'virtualbox'
     m.vm.provider 'virtualbox' do |vb|
@@ -528,9 +531,16 @@ def lab_apply_basics(m, vm_cfg, vm_name)
     qemu_bin = (LAB_ARCH == 'x86_64') ?
       QEMU_CFG['qemu_system_x86_64'] :
       QEMU_CFG['qemu_system_aarch64']
+    # vagrant-qemu defaults every VM to forwarding guest 22 -> host 50022,
+    # which collides across VMs. Assign a unique host port per index.
+    ssh_port = 50022 + vm_index
+    # Deterministic MAC on the socket_vmnet lab segment. Last octet = 0x40+index
+    # so VMs are easy to identify (repo=:40, control=:41, node1..5=:42..:46).
+    lab_mac  = "52:54:00:00:00:%02x" % (0x40 + vm_index)
     m.vm.provider 'qemu' do |qe|
-      qe.memory = "#{vm_cfg['memory']}M"
-      qe.smp    = vm_cfg['cpus'].to_s
+      qe.memory   = "#{vm_cfg['memory']}M"
+      qe.smp      = vm_cfg['cpus'].to_s
+      qe.ssh_port = ssh_port
       if LAB_ARCH == 'x86_64'
         qe.arch    = 'x86_64'
         qe.machine = 'q35'
@@ -541,10 +551,19 @@ def lab_apply_basics(m, vm_cfg, vm_name)
         qe.cpu     = 'cortex-a72'
       end
       qe.net_device = 'virtio-net-pci'
-      qe.qemu_bin   = [
+      # Wrap qemu through socket_vmnet_client. The wrapper opens the vmnet
+      # socket on fd 3 and exec()s qemu — qemu still has to be told to use
+      # that fd, which is what the extra_qemu_args below do.
+      qe.qemu_bin = [
         QEMU_CFG['socket_vmnet_client'],
         QEMU_CFG['socket_vmnet_socket'],
         qemu_bin
+      ]
+      existing = qe.extra_qemu_args
+      existing = [] unless existing.is_a?(Array)
+      qe.extra_qemu_args = existing + [
+        '-netdev', 'socket,fd=3,id=netvmnet',
+        '-device', "virtio-net-pci,netdev=netvmnet,mac=#{lab_mac}"
       ]
     end
   else
@@ -635,7 +654,7 @@ Vagrant.configure('2') do |config|
   # ---------------- REPO SERVER ----------------
   config.vm.define 'repo' do |m|
     m.vm.hostname = repo_cfg['hostname']
-    lab_apply_basics(m, repo_cfg, 'rhce-repo-server')
+    lab_apply_basics(m, repo_cfg, 'rhce-repo-server', 0)
     lab_private_network(m, REPO_IP)
     lab_attach_iso(m, ISO)
     m.vm.provision 'shell',
@@ -652,7 +671,7 @@ Vagrant.configure('2') do |config|
   # ---------------- CONTROL NODE ----------------
   config.vm.define 'control' do |m|
     m.vm.hostname = ctrl_cfg['hostname']
-    lab_apply_basics(m, ctrl_cfg, 'rhce-ansible-control')
+    lab_apply_basics(m, ctrl_cfg, 'rhce-ansible-control', 1)
     lab_private_network(m, CTRL_IP)
     m.vm.provision 'file', source: "files/keys/#{KEY_NAME}",
                    destination: '/tmp/RH294-LAB'
@@ -673,7 +692,7 @@ Vagrant.configure('2') do |config|
   (1..NODE_COUNT).each do |i|
     config.vm.define "node#{i}" do |m|
       m.vm.hostname = "node#{i}"
-      lab_apply_basics(m, node_cfg, "rhce-node#{i}")
+      lab_apply_basics(m, node_cfg, "rhce-node#{i}", 1 + i)
       lab_private_network(m, node_ip(i))
       node_cfg['extra_disks'].each_with_index do |disk, idx|
         lab_attach_extra_disk(m, "node#{i}", idx + 1, disk['size'])
