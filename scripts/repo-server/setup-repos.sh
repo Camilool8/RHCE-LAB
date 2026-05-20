@@ -43,8 +43,10 @@ EOF
 chown -R apache:apache "$WEBROOT"
 restorecon -R "$WEBROOT" 2>/dev/null || true
 
-firewall-cmd --permanent --add-service=http
-firewall-cmd --reload
+# Lab clients (managed nodes / control) come in on the internal zone;
+# nothing on the public/NAT zone needs HTTP access.
+firewall-cmd --permanent --zone=internal --add-service=http >/dev/null 2>&1 || true
+firewall-cmd --reload >/dev/null
 systemctl enable --now httpd
 
 echo "=== HTTP repos ready at http://<repo-ip>/repo/ ==="

@@ -104,17 +104,54 @@ every managed node.
 ## Storage layout (managed nodes)
 
 Each managed node carries two extra virtual disks. Their device names depend
-on the provider:
+on the provider's preferred bus:
 
-| Provider | First extra | Second extra |
-|---|---|---|
-| virtualbox, parallels, vmware_desktop | `/dev/sdb` | `/dev/sdc` |
-| libvirt | `/dev/vdb` | `/dev/vdc` |
+| Provider | Bus | First extra | Second extra |
+|---|---|---|---|
+| virtualbox | SCSI/SATA | `/dev/sdb` | `/dev/sdc` |
+| parallels | SCSI/SATA | `/dev/sdb` | `/dev/sdc` |
+| libvirt | virtio | `/dev/vdb` | `/dev/vdc` |
+| vmware_desktop | NVMe | `/dev/nvme0n2` | `/dev/nvme0n3` |
 
 The first extra disk is left raw for task 17. The second extra disk is
 pre-built into the volume group `research` for task 16. Provisioning scripts
-detect either device-name family — students writing playbooks should accept
-both forms.
+detect all three device-name families — students writing playbooks should
+accept all three (or use `lsblk` to detect at runtime).
+
+## Networking and firewall
+
+- The lab subnet (`192.168.56.0/24` by default) is delivered via Vagrant's
+  `private_network` but configured in-guest by
+  `scripts/common/configure-lab-network.sh` using NetworkManager keyfiles —
+  Vagrant's RedHat guest capability writes obsolete `/etc/sysconfig/network-
+  scripts/ifcfg-*` files that AlmaLinux 9.6+ no longer reads
+  ([HashiCorp Vagrant #13744](https://github.com/hashicorp/vagrant/issues/13744)).
+- The connection lands in firewalld's **`internal`** zone, with the lab
+  subnet also bound by source — so policy is correct even if NetworkManager
+  zone integration drifts.
+- The repo server opens `http`, `nfs`, `mountd`, and `rpc-bind` on the
+  `internal` zone only. The public/NAT interface stays defended.
+
+## ansible-navigator
+
+`scripts/control/setup-control.sh` installs ansible-navigator robustly:
+
+1. **On RHEL with an active Ansible Automation Platform subscription** —
+   enables `ansible-automation-platform-2.5-for-rhel-9-$(uname -m)-rpms` via
+   `subscription-manager` and runs `dnf install ansible-navigator`. This is
+   the same path an exam environment uses.
+2. **Otherwise** (AlmaLinux, Rocky, unsubscribed RHEL) — falls back to
+   `python3.11 -m pip install --user ansible-dev-tools` as the `student`
+   user. `python3.11` is needed because `ansible-dev-tools` requires Python
+   ≥ 3.10 (AlmaLinux 9 ships 3.9 as the platform Python).
+
+A `~/.ansible-navigator.yml` is dropped on the control node pointing at
+`ghcr.io/ansible/community-ansible-dev-tools:latest` — the maintained
+multi-arch (amd64+arm64) execution-environment image (the older
+`quay.io/ansible/creator-ee` was archived August 2024). The image is
+pre-pulled during provisioning so task 18 works offline. If the pull fails,
+`ansible-navigator --execution-environment false` still works for syntax
+checks.
 
 ## Practice workflow
 

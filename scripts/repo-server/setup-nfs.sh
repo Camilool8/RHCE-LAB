@@ -1,7 +1,10 @@
 #!/bin/bash
-# Repo server: NFS-export the BaseOS/AppStream trees so managed nodes can
-# mount them at /mnt/BaseOS and /mnt/AppStream (needed by task 2).
-# Arg 1: subnet CIDR allowed to mount (e.g. 192.168.56.0/24).
+# scripts/repo-server/setup-nfs.sh <subnet_cidr>
+# NFS-export the BaseOS/AppStream trees so managed nodes can mount them at
+# /mnt/BaseOS and /mnt/AppStream (task 2's file:// repos). NFS services are
+# opened on firewalld's `internal` zone (where the lab subnet has been bound
+# by base-setup.sh) so the repo server stays defended on its public/NAT
+# interface.
 set -euo pipefail
 
 SUBNET="${1:?subnet CIDR argument required}"
@@ -16,12 +19,15 @@ ${WEBROOT}/BaseOS    ${SUBNET}(ro,sync,no_root_squash)
 ${WEBROOT}/AppStream ${SUBNET}(ro,sync,no_root_squash)
 EOF
 
-firewall-cmd --permanent --add-service=nfs
-firewall-cmd --permanent --add-service=mountd
-firewall-cmd --permanent --add-service=rpc-bind
-firewall-cmd --reload
+# Open NFSv4 + v3 helpers in the internal zone. v4 alone needs only the nfs
+# service (port 2049); mountd/rpc-bind cover legacy v3 mount attempts.
+for svc in nfs mountd rpc-bind; do
+  firewall-cmd --permanent --zone=internal --add-service="$svc" \
+    >/dev/null 2>&1 || true
+done
+firewall-cmd --reload >/dev/null
 
 systemctl enable --now nfs-server
 exportfs -rav
 
-echo "=== NFS exports ready ==="
+echo "=== NFS exports ready (zone: internal) ==="

@@ -145,12 +145,18 @@ def lab_apply_basics(m, vm_cfg, vm_name)
 end
 
 def lab_private_network(m, ip)
-  m.vm.network 'private_network', ip: ip, netmask: MASK
+  # auto_config: false — Vagrant's RedHat guest capability writes obsolete
+  # /etc/sysconfig/network-scripts/ifcfg-* files which AlmaLinux 9.6+ no longer
+  # reads (HashiCorp Vagrant issue #13744). The Vagrantfile still asks the
+  # provider to create the private vmnet/host-only network and attach a NIC
+  # to it; the in-guest IP assignment is done by configure-lab-network.sh
+  # via NetworkManager keyfile, which is portable across all four providers.
+  m.vm.network 'private_network', ip: ip, netmask: MASK, auto_config: false
 end
 
 def lab_attach_extra_disk(m, vm_name, idx, size_gb)
   case PROVIDER
-  when 'virtualbox', 'vmware_desktop'
+  when 'virtualbox'
     m.vm.disk :disk, name: "#{vm_name}-extra#{idx}", size: "#{size_gb}GB"
   when 'libvirt'
     m.vm.provider 'libvirt' do |lv|
@@ -161,6 +167,16 @@ def lab_attach_extra_disk(m, vm_name, idx, size_gb)
       prl.customize 'post-import',
         ['set', :id, '--device-add', 'hdd', '--size', "#{size_gb * 1024}"]
     end
+  when 'vmware_desktop'
+    # Broadcom (Apple Silicon Fusion KB 315602) recommends NVMe for all guests
+    # — SCSI is explicitly NOT recommended. vagrant-vmware-desktop 3.0.4+
+    # honours `bus_type` via the disk's `provider_config` hash (see the
+    # plugin's lib/vagrant-vmware-desktop/cap/disk.rb), no vmx surgery needed.
+    m.vm.disk :disk,
+              name:    "#{vm_name}-extra#{idx}",
+              size:    "#{size_gb}GB",
+              primary: false,
+              provider_config: { vmware_desktop: { bus_type: 'nvme' } }
   end
 end
 
@@ -201,7 +217,10 @@ Vagrant.configure('2') do |config|
     lab_apply_basics(m, repo_cfg, 'rhce-repo-server')
     lab_private_network(m, REPO_IP)
     lab_attach_iso(m, ISO)
-    m.vm.provision 'shell', path: 'scripts/common/base-setup.sh'
+    m.vm.provision 'shell', path: 'scripts/common/base-setup.sh',
+                   args: [SUBNET_CIDR]
+    m.vm.provision 'shell', path: 'scripts/common/configure-lab-network.sh',
+                   args: [REPO_IP, SUBNET_CIDR]
     m.vm.provision 'shell', path: 'scripts/common/create-users.sh'
     m.vm.provision 'shell', path: 'scripts/repo-server/setup-repos.sh'
     m.vm.provision 'shell', path: 'scripts/repo-server/setup-gpg.sh'
@@ -220,7 +239,10 @@ Vagrant.configure('2') do |config|
                    destination: '/tmp/RH294-LAB.pub'
     m.vm.provision 'file', source: 'files/vimrc',
                    destination: '/tmp/vimrc'
-    m.vm.provision 'shell', path: 'scripts/common/base-setup.sh'
+    m.vm.provision 'shell', path: 'scripts/common/base-setup.sh',
+                   args: [SUBNET_CIDR]
+    m.vm.provision 'shell', path: 'scripts/common/configure-lab-network.sh',
+                   args: [CTRL_IP, SUBNET_CIDR]
     m.vm.provision 'shell', path: 'scripts/common/create-users.sh'
     m.vm.provision 'shell', path: 'scripts/control/setup-control.sh',
                    args: HOST_ARGS
@@ -237,7 +259,10 @@ Vagrant.configure('2') do |config|
       end
       m.vm.provision 'file', source: "files/keys/#{KEY_NAME}.pub",
                      destination: '/tmp/RH294-LAB.pub'
-      m.vm.provision 'shell', path: 'scripts/common/base-setup.sh'
+      m.vm.provision 'shell', path: 'scripts/common/base-setup.sh',
+                     args: [SUBNET_CIDR]
+      m.vm.provision 'shell', path: 'scripts/common/configure-lab-network.sh',
+                     args: [node_ip(i), SUBNET_CIDR]
       m.vm.provision 'shell', path: 'scripts/common/create-users.sh'
       m.vm.provision 'shell', path: 'scripts/node/setup-node.sh',
                      args: [REPO_IP]

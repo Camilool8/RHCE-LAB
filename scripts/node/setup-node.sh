@@ -21,11 +21,13 @@ chmod 600 /home/student/.ssh/authorized_keys
 restorecon -R /home/student/.ssh 2>/dev/null || true
 
 # --- VG 'research' on the second extra disk (task 16).
-# The device name depends on the Vagrant provider: VirtualBox/Parallels
-# expose SCSI/SATA as /dev/sd*, libvirt and qemu expose virtio as /dev/vd*.
-# The first extra disk (sdb/vdb) is intentionally left raw for task 17.
+# The device name depends on the Vagrant provider:
+#   VirtualBox/Parallels      -> /dev/sdc (SCSI/SATA)
+#   libvirt                   -> /dev/vdc (virtio)
+#   VMware Fusion (Apple Si)  -> /dev/nvme0n3 (NVMe; nvme0n1 = root, n2 = first extra)
+# The first extra disk is intentionally left raw for task 17.
 RESEARCH_DISK=""
-for d in /dev/sdc /dev/vdc; do
+for d in /dev/sdc /dev/vdc /dev/nvme0n3; do
   if [ -b "$d" ]; then RESEARCH_DISK="$d"; break; fi
 done
 
@@ -36,16 +38,28 @@ if [ -n "$RESEARCH_DISK" ]; then
     echo "Created volume group 'research' on $RESEARCH_DISK"
   fi
 else
-  echo "WARN: no extra disk found for VG 'research' (checked /dev/sdc, /dev/vdc)"
+  echo "WARN: no extra disk found for VG 'research' (checked /dev/sdc, /dev/vdc, /dev/nvme0n3)"
 fi
 
 # --- Mount BaseOS/AppStream from the repo server at /mnt (task 2) ---
+# systemd automount: mounts on first access (e.g. dnf --enablerepo=) instead
+# of at boot. If the repo server is briefly unreachable, the node still boots
+# cleanly — the mount activates whenever it's first touched. RHEL 9 'Managing
+# file systems' Ch. 19 covers this pattern.
 mkdir -p /mnt/BaseOS /mnt/AppStream
+NFS_OPTS="x-systemd.automount,x-systemd.idle-timeout=600,x-systemd.device-timeout=10"
+NFS_OPTS="${NFS_OPTS},_netdev,nofail,ro,vers=4.2,noatime"
 for share in BaseOS AppStream; do
-  fstab_line="${REPO_IP}:/var/www/html/repo/${share} /mnt/${share} nfs ro,_netdev 0 0"
-  grep -qF " /mnt/${share} nfs " /etc/fstab \
-    || echo "$fstab_line" >> /etc/fstab
+  fstab_line="${REPO_IP}:/var/www/html/repo/${share} /mnt/${share} nfs ${NFS_OPTS} 0 0"
+  # Replace any prior lab entry for this mount point so option changes apply.
+  sed -i "\| /mnt/${share} nfs |d" /etc/fstab
+  echo "$fstab_line" >> /etc/fstab
 done
-mount -a || echo "WARN: NFS mount deferred (repo server may not be ready yet)"
+systemctl daemon-reload
+# Activate the .automount units now — actual NFS contact is deferred to
+# first access of /mnt/{BaseOS,AppStream}.
+systemctl start "$(systemd-escape --suffix=automount --path /mnt/BaseOS)" \
+                "$(systemd-escape --suffix=automount --path /mnt/AppStream)" \
+  2>/dev/null || true
 
 echo "=== Managed node setup complete: $(hostname) ==="

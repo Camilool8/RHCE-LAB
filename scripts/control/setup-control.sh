@@ -1,19 +1,39 @@
 #!/bin/bash
-# Control node setup: install Ansible tooling, install the RH294-LAB private
-# key for student, populate /etc/hosts, and pre-pull an execution environment.
-# Args: repeated "<ip> <hostname>" pairs for every lab host.
+# scripts/control/setup-control.sh <ip> <hostname> [<ip> <hostname> ...]
+#
+# Control-node provisioning:
+# 1. Install ansible-core + supporting packages.
+# 2. Install ansible-navigator robustly:
+#    - On RHEL with an Ansible Automation Platform subscription, enable the
+#      AAP repo and `dnf install ansible-navigator` — the same path students
+#      will see in a real exam environment.
+#    - Otherwise (AlmaLinux / Rocky / unsubscribed RHEL) fall back to
+#      `python3.11 -m pip install --user ansible-dev-tools` as the student
+#      user, which pulls in ansible-navigator + ansible-creator + lint etc.
+# 3. Drop a sane ~/.ansible-navigator.yml referencing the multi-arch community
+#    execution environment image (ghcr.io/ansible/community-ansible-dev-tools;
+#    quay.io/ansible/creator-ee was archived August 2024).
+# 4. Pre-pull the EE image so task 18 (ansible-navigator) works offline.
+#
+# Args: repeated "<ip> <hostname>" pairs for every lab host (used to populate
+# /etc/hosts on the control node).
 set -euo pipefail
 
 echo "=== Control node setup ==="
 
-# --- Ansible tooling ---
-dnf install -y ansible-core python3 python3-pip podman git tar 2>/dev/null \
+# --- Core packages ---
+# python3.11: ansible-dev-tools requires Python >= 3.10; AlmaLinux 9 ships
+#            python3.9 as the platform Python.
+# gcc + python3.11-devel + libffi-devel + openssl-devel + krb5-devel:
+#            build deps for cffi / cryptography / onigurumacffi when pip
+#            cannot find a prebuilt wheel for the host architecture.
+dnf install -y \
+    ansible-core python3 python3-pip podman git tar createrepo_c \
+    python3.11 python3.11-pip python3.11-devel \
+    gcc make libffi-devel openssl-devel krb5-devel \
+    redhat-rpm-config \
+  2>/dev/null \
   || echo "WARN: some control packages may already be installed"
-dnf install -y ansible-navigator 2>/dev/null || true
-if ! command -v ansible-navigator &>/dev/null; then
-  pip3 install ansible-navigator 2>/dev/null \
-    || echo "WARN: ansible-navigator not installed (task 18 may need manual setup)"
-fi
 
 # --- RH294-LAB SSH key for student (uploaded to /tmp by Vagrant) ---
 install -d -m 700 -o student -g student /home/student/.ssh
@@ -36,8 +56,61 @@ sed -i '/# RHCE-LAB BEGIN/,/# RHCE-LAB END/d' /etc/hosts
   echo "# RHCE-LAB END"
 } >> /etc/hosts
 
-# --- Pre-pull an execution environment for ansible-navigator (task 18) ---
-sudo -u student podman pull quay.io/ansible/creator-ee:latest 2>/dev/null \
-  || echo "WARN: EE image pull failed — run ansible-navigator with '--execution-environment false'"
+# -----------------------------------------------------------------------------
+# ansible-navigator install
+# -----------------------------------------------------------------------------
+install_navigator_via_rhel_subscription() {
+  command -v subscription-manager >/dev/null 2>&1 || return 1
+  subscription-manager status >/dev/null 2>&1 || return 1
+  local arch repo
+  arch=$(uname -m)
+  repo="ansible-automation-platform-2.5-for-rhel-9-${arch}-rpms"
+  echo "Detected RHEL with active subscription — enabling ${repo}"
+  subscription-manager repos --enable="$repo" >/dev/null 2>&1 || return 1
+  dnf install -y ansible-navigator 2>/dev/null
+}
+
+install_navigator_via_pip() {
+  echo "Installing ansible-navigator via python3.11 -m pip --user (student)"
+  sudo -u student -H python3.11 -m pip install --user --upgrade pip wheel \
+    2>&1 | tail -3 || true
+  # ansible-dev-tools bundles ansible-navigator + ansible-creator + ansible-lint
+  # + molecule + ansible-builder. If the meta package fails (rare), fall back
+  # to just ansible-navigator.
+  if ! sudo -u student -H python3.11 -m pip install --user ansible-dev-tools 2>&1 | tail -5; then
+    sudo -u student -H python3.11 -m pip install --user ansible-navigator 2>&1 | tail -5
+  fi
+}
+
+if ! command -v ansible-navigator >/dev/null 2>&1 \
+   && ! sudo -u student bash -lc 'command -v ansible-navigator' >/dev/null 2>&1; then
+  if ! install_navigator_via_rhel_subscription; then
+    install_navigator_via_pip \
+      || echo "WARN: ansible-navigator install failed — use --execution-environment false"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# ansible-navigator settings + EE image
+# -----------------------------------------------------------------------------
+# community-ansible-dev-tools is the maintained multi-arch (amd64+arm64) EE.
+# creator-ee was archived in August 2024.
+EE_IMAGE="ghcr.io/ansible/community-ansible-dev-tools:latest"
+
+cat > /home/student/.ansible-navigator.yml <<EOF
+---
+ansible-navigator:
+  execution-environment:
+    enabled: true
+    image: ${EE_IMAGE}
+    pull:
+      policy: missing
+    container-engine: podman
+EOF
+chown student:student /home/student/.ansible-navigator.yml
+
+# Pre-pull the EE so the first navigator run works without internet.
+sudo -u student -H podman pull "$EE_IMAGE" 2>&1 | tail -3 \
+  || echo "WARN: EE image pull failed — ansible-navigator --execution-environment false will still work"
 
 echo "=== Control node setup complete ==="
