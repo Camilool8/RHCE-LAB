@@ -152,7 +152,7 @@ See [Snapshot and revert](../how-to/snapshot-and-revert.md).
 
 ## Where to go next
 
-- Read your first exam task: open [`lab/tasks/task-01.txt`](../../lab/tasks/task-01.txt).
+- Read your first exam task: open [`lab/tasks/task-01.md`](../../lab/tasks/task-01.md).
 - Learn the daily workflow: [Practice one of the 18 exam tasks](../how-to/practice-a-task.md).
 - Score your work against an EX294-style grader: [Task verifier](../../scripts/verify/README.md).
 - Try `ansible-navigator`: [Use `ansible-navigator`](../how-to/use-ansible-navigator.md).

@@ -2,6 +2,9 @@
 
 ### What this teaches
 
+- How to install `ansible-core` (and the optional `ansible-navigator`
+  tooling) on a RHEL/AlmaLinux 9 control node — what the exam expects
+  you to type even if the practice lab pre-installs it for you.
 - The static-INI inventory format and group hierarchy
   (`[webservers:children]` makes `webservers` a parent of `prod`).
 - The exact `ansible.cfg` knobs that make `ansible all -m ping`
@@ -9,6 +12,28 @@
   EX294 grader assumes this.
 - Pre-wiring `vault_password_file` so playbooks that read encrypted
   variables (task 14) need no `--vault-password-file` argument.
+
+### Install Ansible on the control node
+
+On a fresh RHEL/AlmaLinux 9 control node (this is the step the exam
+expects in part (a)):
+
+```bash
+sudo dnf install -y ansible-core
+ansible --version          # confirm
+```
+
+Optional but recommended for tasks 17/18:
+
+```bash
+sudo dnf install -y ansible-navigator   # from EPEL on AlmaLinux 9
+```
+
+> **In this lab** `ansible-core` is already installed by
+> `scripts/control/setup-control.sh` during `vagrant up`, so you do not
+> need to run the command above to make the verifier pass. It is shown
+> here because the EX294 task expects the student to know it. See
+> [Known task discrepancies](../../docs/explanation/known-task-discrepancies.md).
 
 ### `inventory`
 

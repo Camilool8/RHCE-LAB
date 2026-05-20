@@ -8,7 +8,7 @@ solutions in `lab/solutions/`. This is the workflow for working through one.
 From the repository root:
 
 ```bash
-cat lab/tasks/task-01.txt
+cat lab/tasks/task-01.md
 ```
 
 Or open the file in your editor.
