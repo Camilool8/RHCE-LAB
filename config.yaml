@@ -10,6 +10,11 @@ vms:
     ip: "192.168.56.40"
     memory: 2048              # reposync of BaseOS+AppStream wants headroom
     cpus: 2
+    extra_disks:
+      - size: 40              # /var/www/html/repo mirror. Some box variants
+                              # (e.g. AlmaLinux 9 vmware_desktop arm64) ship
+                              # ~20 GB root disks — too small for the ~28 GB
+                              # BaseOS+AppStream mirror plus headroom.
   control:
     hostname: "ansible-control"
     ip: "192.168.56.50"

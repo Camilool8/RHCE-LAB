@@ -20,6 +20,80 @@ REPO_PACKAGE_THRESHOLD="${REPO_PACKAGE_THRESHOLD:-500}"
 
 echo "=== Repo server: building offline BaseOS + AppStream mirror ==="
 
+# ---- Mount the dedicated mirror disk at $WEBROOT -----------------------------
+#
+# BaseOS + AppStream is ~28 GB today and grows with every upstream release.
+# Some box variants (notably almalinux/9 on vmware_desktop arm64) ship a
+# ~20 GB root disk, which fills up partway through AppStream and surfaces
+# as `Curl error (23): Failed writing received data to disk/application`
+# on the larger packages (dotnet-sdk-dbg etc.).
+#
+# config.yaml attaches an extra_disk to repo_server; we format it XFS on
+# first boot and mount it at $WEBROOT. If no extra disk is present we fall
+# back to the root filesystem so older configs still work.
+prepare_mirror_disk() {
+    local mountpoint="$1"
+    mkdir -p "$mountpoint"
+
+    # Already mounted (re-provision after first install) — nothing to do.
+    if mountpoint -q "$mountpoint"; then
+        echo "Mirror disk already mounted at ${mountpoint}"
+        return 0
+    fi
+
+    local dev=""
+    # Vagrant exposes the first extra disk as /dev/sdb (VirtualBox, Parallels),
+    # /dev/vdb (libvirt), or /dev/nvme0n2 (VMware Fusion + bus_type=nvme; the
+    # repo VM's primary is on /dev/sda, so NVMe extras start at nvme0n2 —
+    # the same offset setup-node.sh assumes when it probes /dev/nvme0n3 for
+    # the second extra on managed nodes).
+    #
+    # Skip any candidate that already has a mounted filesystem (root disk on
+    # a box variant where naming overlaps) or is smaller than the 40 GB extra
+    # disk we asked for (phantom controllers, etc.).
+    local min_bytes=$((30 * 1024 * 1024 * 1024))   # 30 GiB safety floor
+    for candidate in /dev/sdb /dev/vdb /dev/nvme0n2; do
+        [ -b "$candidate" ] || continue
+        if lsblk -no MOUNTPOINTS "$candidate" 2>/dev/null \
+                | awk 'NF' | head -1 | grep -q .; then
+            continue
+        fi
+        local size
+        size=$(lsblk -bdn -o SIZE "$candidate" 2>/dev/null || echo 0)
+        [ -n "$size" ] && [ "$size" -ge "$min_bytes" ] || continue
+        dev="$candidate"
+        break
+    done
+
+    if [ -z "$dev" ]; then
+        echo "INFO: no dedicated mirror disk found; using root filesystem"
+        return 0
+    fi
+
+    if ! blkid "$dev" >/dev/null 2>&1; then
+        echo "Mirror disk: formatting ${dev} as XFS"
+        mkfs.xfs -q -L repo-mirror "$dev"
+    fi
+
+    local uuid
+    uuid=$(blkid -s UUID -o value "$dev")
+    [ -n "$uuid" ] || { echo "ERROR: ${dev} has no UUID after mkfs"; return 1; }
+
+    # Replace any existing fstab entry for this mountpoint to keep idempotent.
+    sed -i "\| ${mountpoint} xfs |d" /etc/fstab
+    echo "UUID=${uuid} ${mountpoint} xfs defaults,nofail 0 0" >> /etc/fstab
+
+    mount "$mountpoint"
+
+    # SELinux: the mountpoint stays /var/www/html/repo (httpd_sys_content_t),
+    # but a freshly-mounted XFS volume has no labels yet — fix that.
+    restorecon -R "$mountpoint" 2>/dev/null || true
+
+    echo "Mirror disk ${dev} (UUID=${uuid}) mounted at ${mountpoint}"
+}
+
+prepare_mirror_disk "$WEBROOT"
+
 dnf install -y httpd createrepo_c dnf-plugins-core
 
 # Discover the upstream repoids on whatever box variant we booted. AlmaLinux

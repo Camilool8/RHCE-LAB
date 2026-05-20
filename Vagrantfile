@@ -178,6 +178,9 @@ Vagrant.configure('2') do |config|
     m.vm.hostname = repo_cfg['hostname']
     lab_apply_basics(m, repo_cfg, 'rhce-repo-server')
     lab_private_network(m, REPO_IP)
+    (repo_cfg['extra_disks'] || []).each_with_index do |disk, idx|
+      lab_attach_extra_disk(m, 'repo', idx + 1, disk['size'])
+    end
     m.vm.provision 'shell', path: 'scripts/common/base-setup.sh',
                    args: [SUBNET_CIDR]
     m.vm.provision 'shell', path: 'scripts/common/configure-lab-network.sh',

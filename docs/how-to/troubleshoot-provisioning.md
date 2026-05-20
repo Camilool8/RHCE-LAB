@@ -115,6 +115,49 @@ that `student` cannot enter. The current code uses `runuser -l student -c
 older version of the provisioner. Pull the latest changes and re-run
 `vagrant provision control`.
 
+### `Vagrant failed to create a new VMware networking device. Failed to enable device`
+
+VMware Fusion's host-only networking (`vmnet1`, `vmnet8`, and the
+lab's `vmnet2`/`bridge102`) was never initialised on this Mac. This is
+step 5 of [install prerequisites](install-prerequisites.md); run it
+once per Mac:
+
+```bash
+sudo "/Applications/VMware Fusion.app/Contents/Library/vmnet-cli" --configure
+sudo "/Applications/VMware Fusion.app/Contents/Library/vmnet-cli" --start
+```
+
+Then re-run `vagrant up`.
+
+If the path looks wrong because of word splitting (`sudo: "/Applications/VMware: command not found`), the quotes were dropped — re-type the command in a shell that does not strip them, or paste it from the prerequisites doc.
+
+### `Curl error (23): Failed writing received data to disk/application` during reposync
+
+The repo VM ran out of disk while mirroring AppStream. The package that
+trips this is usually a large debug symbol RPM (e.g. `dotnet-sdk-dbg-*`)
+late in the package list. The provisioner ends with:
+
+```
+WARN: AppStream: reposync exited non-zero. Mirror may be incomplete.
+```
+
+This used to happen on box variants whose root disk is ~20 GB
+(e.g. `almalinux/9` on `vmware_desktop` arm64). `config.yaml` now
+attaches a dedicated 40 GB extra disk to the repo VM and
+`setup-repos.sh` mounts it at `/var/www/html/repo` on first boot.
+
+If you hit this on an older lab clone (no `extra_disks:` under
+`repo_server` in `config.yaml`), pull the latest, then:
+
+```bash
+vagrant destroy -f repo
+vagrant up repo
+```
+
+`vagrant provision repo` alone is **not** enough — Vagrant does not
+attach new virtual hardware on re-provision; you need a fresh boot to
+pick up the extra disk.
+
 ### `The device type "lsilogic" specified for "scsi0" is not supported by vmrun`
 
 Apple Silicon Fusion does not support SCSI lsilogic. The lab's Vagrantfile

@@ -80,15 +80,21 @@ real NFS mount) while also guaranteeing dnf works at provision time
 
 | Artifact                       | Size on disk     |
 | ------------------------------ | ---------------- |
-| `/var/www/html/repo/BaseOS`    | ~4 GB            |
+| `/var/www/html/repo/BaseOS`    | ~14 GB           |
 | `/var/www/html/repo/AppStream` | ~14 GB           |
-| Total                          | ~18 GB           |
+| Total                          | ~28 GB           |
 | Repo VM RAM during sync        | ~1.5 GB peak     |
 | First reposync over 100 Mb/s   | 8 – 20 minutes   |
 | Delta sync on re-provision     | seconds to minutes |
 
-The repo VM defaults to 2 GB RAM and inherits the box's default disk
-(50 – 128 GB depending on provider — plenty of room).
+The repo VM defaults to 2 GB RAM. The box's root disk varies by provider
+and architecture (the `almalinux/9` `vmware_desktop` arm64 build, for
+example, ships a ~20 GB root volume — too small for the full mirror).
+To avoid filling the root, `config.yaml` attaches a dedicated 40 GB
+**extra disk** to the repo VM; `setup-repos.sh` formats it XFS and
+mounts it at `/var/www/html/repo` on first boot. If the disk is not
+present the script falls back to the root filesystem and logs an INFO
+line — useful if you ever want to deploy without the extra disk.
 
 ## When you actually need internet
 
