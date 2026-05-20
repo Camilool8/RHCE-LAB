@@ -409,8 +409,17 @@ PROVIDER_MATRIX = {
   %w[windows x86_64 x86_64] => 'virtualbox',
 }.freeze
 
+def detect_cli_provider
+  i = ARGV.index { |a| a == '--provider' || a.start_with?('--provider=') }
+  return nil unless i
+  arg = ARGV[i]
+  return arg.split('=', 2)[1] if arg.include?('=')
+  ARGV[i + 1]
+end
+
 cfg_default = settings.dig('providers', 'default').to_s.strip
-PROVIDER = ENV['LAB_PROVIDER'] ||
+PROVIDER = detect_cli_provider ||
+           ENV['LAB_PROVIDER'] ||
            (cfg_default.empty? ? PROVIDER_MATRIX[[HOST_OS, HOST_ARCH, LAB_ARCH]] : cfg_default)
 
 if PROVIDER.nil? || PROVIDER.empty?
@@ -492,12 +501,15 @@ def lab_apply_basics(m, vm_cfg, vm_name)
         lv.driver = 'kvm'
         lv.cpu_mode = 'host-passthrough' if LAB_ARCH == 'arm64'
       else
+        # Cross-arch TCG emulation under libvirt.
         lv.driver        = 'qemu'
         lv.machine_arch  = LAB_ARCH
-        lv.machine_type  = 'pc'
-        lv.emulator_path = '/usr/bin/qemu-system-x86_64'
+        lv.machine_type  = (LAB_ARCH == 'x86_64') ? 'pc' : 'virt'
+        lv.emulator_path = (LAB_ARCH == 'x86_64') ?
+                             '/usr/bin/qemu-system-x86_64' :
+                             '/usr/bin/qemu-system-aarch64'
         lv.cpu_mode      = 'custom'
-        lv.cpu_model     = 'qemu64'
+        lv.cpu_model     = (LAB_ARCH == 'x86_64') ? 'qemu64' : 'cortex-a72'
       end
     end
   when 'parallels'
