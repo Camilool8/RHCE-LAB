@@ -57,7 +57,7 @@ Both the task text and the reference solution literally said
 `/dev/vda` on libvirt, `/dev/nvme0n1` on VMware — so the original
 reference solution didn't run on two of the four providers.
 
-**Fix** (in `lab/tasks/task-17.txt` and `lab/solutions/answer-17.md`):
+**Fix** (in `lab/tasks/task-17.md` and `lab/solutions/answer-17.md`):
 
 - Task text now says "the additional raw data disk" and explicitly
   forbids hard-coding the device name. It also adds the hint that
@@ -128,6 +128,18 @@ notes. Concrete deltas worth knowing:
   template changes are explicit rather than implicit-from-restart.
 
 ## By design — not bugs
+
+### Task 1 — `ansible-core` is pre-installed
+
+Task 1, part (a) says "Install the required packages." On the real
+exam the candidate runs `sudo dnf install -y ansible-core` on the
+control node. The lab's provisioner (`scripts/control/setup-control.sh`)
+already installs `ansible-core` (and `ansible-navigator` where available)
+during `vagrant up`, so the verifier does not check for the install
+step — only the inventory + `ansible.cfg` artifacts it produces.
+
+The reference solution in `lab/solutions/answer-01.md` still spells out
+the install command so the student learns what to type on the exam.
 
 ### Task 4 — student installs the system-roles package
 

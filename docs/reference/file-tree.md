@@ -28,7 +28,7 @@ RHCE-LAB/
 │                                        # NFS automount fstab, research VG
 │
 ├── lab/                         # practice content (read-only at runtime)
-│   ├── tasks/                   # task-01.txt … task-18.txt
+│   ├── tasks/                   # task-01.md … task-18.md
 │   └── solutions/               # answer-01.md … answer-18.md
 │
 ├── disks/                       # per-node extra disk files, gitignored

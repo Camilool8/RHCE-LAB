@@ -4,7 +4,7 @@ The 18 EX294 practice tasks live in `lab/tasks/` and their reference
 solutions in `lab/solutions/`. Read a task with:
 
 ```bash
-cat lab/tasks/task-01.txt
+cat lab/tasks/task-01.md
 ```
 
 ## Task summary
