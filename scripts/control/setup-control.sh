@@ -22,25 +22,37 @@ set -euo pipefail
 echo "=== Control node setup ==="
 
 # --- Core packages ---
-# python3.11: ansible-dev-tools requires Python >= 3.10; AlmaLinux 9 ships
-#             python3.9 as the platform Python.
-# gcc + python3.11-devel + libffi-devel + openssl-devel + krb5-devel:
-#             build deps for cffi / cryptography when pip has no prebuilt
-#             wheel for the host architecture.
-# oniguruma-devel (from EPEL): C header dependency of `onigurumacffi`, which
-#             ansible-navigator's TUI pulls in transitively. Without it,
-#             pip's source-build of onigurumacffi fails and the whole
-#             ansible-dev-tools install aborts.
-dnf install -y epel-release 2>/dev/null \
-  || echo "WARN: EPEL install failed (may already be present)"
-
+# Split into THREE installs so a single missing optional package does not
+# atomic-rollback the whole transaction (which is what happened when
+# oniguruma-devel was missing — python3.11/podman/etc all went uninstalled):
+#
+# 1) MUST succeed: ansible-core, python3.11, podman, build deps for cffi
+#    and cryptography. Without these the rest of the script is meaningless.
+# 2) BEST EFFORT: EPEL release + CRB (CodeReady Builder) enablement. CRB is
+#    where many -devel packages live on AlmaLinux 9; EPEL adds extra
+#    community packages. Both are best-effort because cross-distro behavior
+#    varies and a fully-offline lab might have neither.
+# 3) BEST EFFORT: oniguruma-devel (C headers used to build onigurumacffi
+#    from source if no aarch64 wheel exists on PyPI). If absent the
+#    ansible-navigator pip install will be attempted anyway and the
+#    install_navigator_via_dnf path may still succeed via EPEL.
 dnf install -y \
     ansible-core python3 python3-pip podman git tar createrepo_c \
     python3.11 python3.11-pip python3.11-devel \
-    gcc make libffi-devel openssl-devel krb5-devel oniguruma-devel \
-    redhat-rpm-config \
-  2>/dev/null \
-  || echo "WARN: some control packages may already be installed"
+    gcc make libffi-devel openssl-devel krb5-devel \
+    redhat-rpm-config
+
+# EPEL + CRB so ansible-navigator (EPEL) and oniguruma-devel (CRB) become
+# installable. Both commands are idempotent.
+dnf install -y epel-release 2>/dev/null || true
+if command -v crb >/dev/null 2>&1; then
+  crb enable 2>/dev/null || true
+else
+  dnf config-manager --set-enabled crb 2>/dev/null || true
+fi
+
+dnf install -y oniguruma-devel 2>/dev/null \
+  || echo "INFO: oniguruma-devel not available (CRB may be disabled). The pip path will fall back."
 
 # --- RH294-LAB SSH key for student (uploaded to /tmp by Vagrant) ---
 install -d -m 700 -o student -g student /home/student/.ssh
@@ -77,6 +89,14 @@ install_navigator_via_rhel_subscription() {
   dnf install -y ansible-navigator 2>/dev/null
 }
 
+install_navigator_via_dnf_epel() {
+  # ansible-navigator is packaged in EPEL on AlmaLinux/Rocky 9. Distro
+  # packages avoid all the source-build pain.
+  dnf list --available ansible-navigator >/dev/null 2>&1 || return 1
+  echo "Installing ansible-navigator from EPEL"
+  dnf install -y ansible-navigator 2>&1 | tail -5
+}
+
 install_navigator_via_pip() {
   echo "Installing ansible-navigator via python3.11 -m pip --user (student)"
   # `runuser -l` runs a full login session (cwd=$HOME, no env from caller).
@@ -102,7 +122,8 @@ has_navigator() {
 }
 
 if ! has_navigator; then
-  if ! install_navigator_via_rhel_subscription; then
+  if ! install_navigator_via_rhel_subscription \
+     && ! install_navigator_via_dnf_epel; then
     install_navigator_via_pip \
       || echo "WARN: ansible-navigator install failed — use --execution-environment false"
   fi
