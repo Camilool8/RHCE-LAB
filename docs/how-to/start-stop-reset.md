@@ -73,6 +73,7 @@ vagrant status
 ```
 
 Output column meanings:
+
 - `running` — VM is up.
 - `not running` — VM exists but is shut down.
 - `not created` — Vagrant has never built this VM.

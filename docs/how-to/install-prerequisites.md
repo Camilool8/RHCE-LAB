@@ -100,7 +100,7 @@ vagrant plugin list | grep libvirt
 ## Windows x86_64
 
 1. Disable **Hyper-V** (Control Panel → Programs → Turn Windows features on or
-   off → uncheck *Hyper-V* and *Windows Hypervisor Platform*) **or** accept
+   off → uncheck _Hyper-V_ and _Windows Hypervisor Platform_) **or** accept
    VirtualBox's slower Hyper-V coexistence mode. Reboot after toggling.
 2. Install [VirtualBox 7.x](https://www.virtualbox.org/wiki/Downloads).
 3. Install [Vagrant 2.4+](https://www.vagrantup.com/downloads).

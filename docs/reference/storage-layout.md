@@ -5,12 +5,12 @@ extra disks. The extra disks' **device paths differ by provider**.
 
 ## Per-provider device names
 
-| Provider | OS root | Extra disk 1 (task 17) | Extra disk 2 (task 16 — VG `research`) |
-|---|---|---|---|
-| `virtualbox` | `/dev/sda` | `/dev/sdb` | `/dev/sdc` |
-| `parallels` | `/dev/sda` | `/dev/sdb` | `/dev/sdc` |
-| `libvirt` | `/dev/vda` | `/dev/vdb` | `/dev/vdc` |
-| `vmware_desktop` | `/dev/nvme0n1` | `/dev/nvme0n2` | `/dev/nvme0n3` |
+| Provider         | OS root        | Extra disk 1 (task 17) | Extra disk 2 (task 16 — VG `research`) |
+| ---------------- | -------------- | ---------------------- | -------------------------------------- |
+| `virtualbox`     | `/dev/sda`     | `/dev/sdb`             | `/dev/sdc`                             |
+| `parallels`      | `/dev/sda`     | `/dev/sdb`             | `/dev/sdc`                             |
+| `libvirt`        | `/dev/vda`     | `/dev/vdb`             | `/dev/vdc`                             |
+| `vmware_desktop` | `/dev/nvme0n1` | `/dev/nvme0n2`         | `/dev/nvme0n3`                         |
 
 ## Extra-disk size
 
@@ -20,8 +20,8 @@ Both extras default to **2 GB**. Tune in [`config.yaml`](config-yaml.md):
 vms:
   nodes:
     extra_disks:
-      - size: 2     # extra disk 1
-      - size: 2     # extra disk 2
+      - size: 2 # extra disk 1
+      - size: 2 # extra disk 2
 ```
 
 ## Pre-built `research` volume group
@@ -50,11 +50,11 @@ the device names at runtime instead of hard-coding `/dev/sdb`:
 - name: Find the first raw disk
   ansible.builtin.set_fact:
     raw_disk: "/dev/{{ ansible_facts.devices
-                       | dict2items
-                       | rejectattr('value.partitions', 'truthy')
-                       | rejectattr('key', 'match', '^(sda|vda|nvme0n1)$')
-                       | map(attribute='key')
-                       | first }}"
+      | dict2items
+      | rejectattr('value.partitions', 'truthy')
+      | rejectattr('key', 'match', '^(sda|vda|nvme0n1)$')
+      | map(attribute='key')
+      | first }}"
 ```
 
 The lab's provisioner does this for the `research` VG — it checks

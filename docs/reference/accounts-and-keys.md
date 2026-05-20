@@ -4,12 +4,12 @@
 
 Every VM (repo, control, all five nodes) has these accounts:
 
-| User | Password | Sudo | Purpose |
-|---|---|---|---|
-| `student` | `1234` | passwordless | RHCE practice user. Every EX294 task path hard-codes `/home/student/`. |
-| `redhat` | `redhat` | passwordless | Convenience admin shell, mirrors the RHCSA-LAB convention. |
-| `vagrant` | `vagrant` | passwordless | Default Vagrant user. Used by `vagrant ssh`. |
-| `root` | (locked) | n/a | Use `sudo` from `student` or `redhat` instead. |
+| User      | Password  | Sudo         | Purpose                                                                |
+| --------- | --------- | ------------ | ---------------------------------------------------------------------- |
+| `student` | `1234`    | passwordless | RHCE practice user. Every EX294 task path hard-codes `/home/student/`. |
+| `redhat`  | `redhat`  | passwordless | Convenience admin shell, mirrors the RHCSA-LAB convention.             |
+| `vagrant` | `vagrant` | passwordless | Default Vagrant user. Used by `vagrant ssh`.                           |
+| `root`    | (locked)  | n/a          | Use `sudo` from `student` or `redhat` instead.                         |
 
 `student` is created by `scripts/common/create-users.sh` and is the user the
 RHCE practice tasks expect.

@@ -18,26 +18,46 @@ The lab provides all five.
 
 ## Architecture in one diagram
 
-```
-┌─────────────────────── host (your Mac / Linux box / Windows PC) ──────────────────────┐
-│                                                                                       │
-│  Vagrant ──▶ provider (VirtualBox / libvirt / Parallels / Fusion)                     │
-│                                                                                       │
-│  ┌──────── private subnet 192.168.56.0/24 (lab) ──────────────────────────────────┐   │
-│  │                                                                                │   │
-│  │   repo-server    ansible-control    node1   node2   node3   node4   node5      │   │
-│  │      .40              .50            .51     .52     .53     .54     .55       │   │
-│  │       │                │              ▲       ▲       ▲       ▲       ▲        │   │
-│  │       │                └── SSH (RH294-LAB key) ────────┴───────┴───────┘       │   │
-│  │       │                                                                        │   │
-│  │       └── HTTP repos + NFS /mnt/BaseOS, /mnt/AppStream ─────▶  all nodes       │   │
-│  │                                                                                │   │
-│  └────────────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                       │
-│  ┌── NAT (provider default) ── eth0 on every VM ── Vagrant SSH + outbound internet ─┐ │
-│  └─────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                       │
-└───────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph host["Your host (macOS · Linux · Windows)"]
+        direction TB
+        vagrant["Vagrant"] -->|drives| provider["Provider<br/>VirtualBox · libvirt · Parallels · VMware Fusion"]
+
+        subgraph lab["Lab subnet 192.168.56.0/24 — eth1 (host-only)"]
+            direction LR
+            repo["repo-server<br/>.40"]
+            control["ansible-control<br/>.50"]
+            n1["node1 · .51"]
+            n2["node2 · .52"]
+            n3["node3 · .53"]
+            n4["node4 · .54"]
+            n5["node5 · .55"]
+
+            control -. "SSH (RH294-LAB key)" .-> n1
+            control -. SSH .-> n2
+            control -. SSH .-> n3
+            control -. SSH .-> n4
+            control -. SSH .-> n5
+
+            repo ==>|"HTTP repos + NFS<br/>/mnt/BaseOS, /mnt/AppStream"| n1
+            repo ==> n2
+            repo ==> n3
+            repo ==> n4
+            repo ==> n5
+        end
+
+        nat["NAT — eth0 on every VM<br/>Vagrant SSH + outbound internet"]
+        provider -.-> lab
+        provider -.-> nat
+    end
+
+    classDef svc fill:#e8f0fe,stroke:#4a73c8,color:#1a3a7a
+    classDef node fill:#f4f4f5,stroke:#888,color:#222
+    classDef infra fill:#fff7e6,stroke:#c68b00,color:#5a3d00
+    class repo,control svc
+    class n1,n2,n3,n4,n5 node
+    class nat,provider,vagrant infra
 ```
 
 ## Provisioner pipeline

@@ -1,6 +1,6 @@
 # Troubleshoot the lab network
 
-Symptom: ``ansible all -m ping`` fails with `UNREACHABLE`, or
+Symptom: `ansible all -m ping` fails with `UNREACHABLE`, or
 `curl http://192.168.56.40/repo/` from the control node times out, or
 NFS automount entries exist on a node but `ls /mnt/BaseOS` fails.
 

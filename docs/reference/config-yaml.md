@@ -7,14 +7,14 @@ can be edited without touching the Vagrantfile.
 
 ```yaml
 network:
-  subnet: "192.168.56"          # first three octets of the lab subnet
+  subnet: "192.168.56" # first three octets of the lab subnet
   netmask: "255.255.255.0"
 
 vms:
   repo_server:
     hostname: "repo-server"
-    ip: "192.168.56.40"         # must match the `network.subnet` above
-    memory: 1024                # MB
+    ip: "192.168.56.40" # must match the `network.subnet` above
+    memory: 1024 # MB
     cpus: 2
 
   control:
@@ -24,28 +24,29 @@ vms:
     cpus: 2
 
   nodes:
-    count: 5                    # how many managed nodes (node1..nodeN)
-    base_ip: 51                 # node1 = {subnet}.{base_ip},
-                                # node2 = {subnet}.{base_ip+1}, ...
+    count: 5 # how many managed nodes (node1..nodeN)
+    base_ip:
+      51 # node1 = {subnet}.{base_ip},
+      # node2 = {subnet}.{base_ip+1}, ...
     memory: 1280
     cpus: 1
     extra_disks:
-      - size: 2                 # GB. First extra disk (raw, task 17)
-      - size: 2                 # GB. Second extra disk (research VG, task 16)
+      - size: 2 # GB. First extra disk (raw, task 17)
+      - size: 2 # GB. Second extra disk (research VG, task 16)
 
 box:
-  name: "almalinux/9"           # Vagrant Cloud box
+  name: "almalinux/9" # Vagrant Cloud box
 
 lab:
-  ansible_user: "student"       # Linux user that owns the practice work
-  ssh_key_name: "RH294-LAB"     # files/keys/<this name> + .pub are generated
+  ansible_user: "student" # Linux user that owns the practice work
+  ssh_key_name: "RH294-LAB" # files/keys/<this name> + .pub are generated
   time_server: "172.25.254.250" # exam-canonical NTP server (task 4)
 
 providers:
-  default: ""                   # blank = auto-detect; set to a provider name to pin
-  virtualbox:     { enabled: true }
-  libvirt:        { enabled: true, network_name: "rhce-lab" }
-  parallels:      { enabled: true }
+  default: "" # blank = auto-detect; set to a provider name to pin
+  virtualbox: { enabled: true }
+  libvirt: { enabled: true, network_name: "rhce-lab" }
+  parallels: { enabled: true }
   vmware_desktop: { enabled: true }
 ```
 
@@ -91,6 +92,7 @@ turns the second into the `research` VG. Size is in GB.
 
 Vagrant Cloud box reference. Default `almalinux/9` is multi-arch (amd64 +
 arm64) and multi-provider. Alternatives:
+
 - `generic/rhel9` — true RHEL, requires a subscription.
 - `bento/rockylinux-9` — Rocky 9 family.
 - `almalinux/9.aarch64` — legacy arm64-only AlmaLinux box (fallback if

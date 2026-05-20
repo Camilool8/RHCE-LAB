@@ -56,9 +56,6 @@ bugs. Apple Silicon users have two well-supported native paths
 - **Cross-arch testing of x86-specific playbooks:** out of scope. RHCE
   practice does not require it.
 
-The original spec amendment documenting this decision lives at
-`docs/superpowers/specs/2026-05-19-rhce-lab-multi-provider-design.md`.
-
 ## Related
 
 - [Provider matrix](../reference/provider-matrix.md).

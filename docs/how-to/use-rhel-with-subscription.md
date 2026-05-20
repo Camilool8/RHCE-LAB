@@ -19,7 +19,7 @@ variants).
 
 ```yaml
 box:
-  name: "generic/rhel9"     # was "almalinux/9"
+  name: "generic/rhel9" # was "almalinux/9"
 ```
 
 ## Step 3 — Destroy and rebuild

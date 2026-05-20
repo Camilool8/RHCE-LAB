@@ -25,6 +25,7 @@ ansible-navigator run ~/ansible/task-01.yml --mode stdout
 ```
 
 What this does:
+
 - Spawns the `community-ansible-dev-tools` container.
 - Mounts your home directory into the container.
 - Runs the playbook with the container's `ansible-core`.

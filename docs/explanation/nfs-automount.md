@@ -20,16 +20,16 @@ The managed nodes mount the repo server's BaseOS and AppStream shares using
 
 ## What this gives you
 
-| Option | Effect |
-|---|---|
-| `x-systemd.automount` | systemd creates `mnt-BaseOS.automount` and `mnt-BaseOS.mount` units. Nothing is actually mounted at boot. |
-| `x-systemd.idle-timeout=600` | After 10 minutes idle, the mount drops. |
-| `x-systemd.device-timeout=10` | If the NFS server is unreachable, retry for at most 10 s before giving up *on this attempt*. The automount will re-try on the next access. |
-| `_netdev` | Wait for `network-online.target` before attempting the mount. |
-| `nofail` | If the mount cannot complete, do not fail boot. |
-| `ro` | Read-only. The shares are repo content. |
-| `vers=4.2` | NFSv4.2 only. v4 needs only port 2049 (no rpc-bind shuffle for the client). |
-| `noatime` | No atime updates. Cheaper and unnecessary for repos. |
+| Option                        | Effect                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `x-systemd.automount`         | systemd creates `mnt-BaseOS.automount` and `mnt-BaseOS.mount` units. Nothing is actually mounted at boot.                                  |
+| `x-systemd.idle-timeout=600`  | After 10 minutes idle, the mount drops.                                                                                                    |
+| `x-systemd.device-timeout=10` | If the NFS server is unreachable, retry for at most 10 s before giving up _on this attempt_. The automount will re-try on the next access. |
+| `_netdev`                     | Wait for `network-online.target` before attempting the mount.                                                                              |
+| `nofail`                      | If the mount cannot complete, do not fail boot.                                                                                            |
+| `ro`                          | Read-only. The shares are repo content.                                                                                                    |
+| `vers=4.2`                    | NFSv4.2 only. v4 needs only port 2049 (no rpc-bind shuffle for the client).                                                                |
+| `noatime`                     | No atime updates. Cheaper and unnecessary for repos.                                                                                       |
 
 ## Why not `fstab + bg + retry=N`
 

@@ -71,7 +71,7 @@ exit             # leave the control VM
 cat lab/solutions/answer-01.md
 ```
 
-The reference solutions are intentionally terse — they show *a* valid answer,
+The reference solutions are intentionally terse — they show _a_ valid answer,
 not the only one.
 
 ## Step 7 — Reset for the next attempt

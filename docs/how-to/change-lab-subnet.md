@@ -7,7 +7,7 @@ with another VirtualBox / Fusion / libvirt private network on your host.
 
 ```yaml
 network:
-  subnet: "192.168.66"     # was "192.168.56"
+  subnet: "192.168.66" # was "192.168.56"
   netmask: "255.255.255.0"
 ```
 
@@ -25,7 +25,7 @@ So if you change `subnet` to `192.168.66`, also update:
 ```yaml
 vms:
   repo_server:
-    ip: "192.168.66.40"     # match new subnet
+    ip: "192.168.66.40" # match new subnet
   control:
     ip: "192.168.66.50"
 ```

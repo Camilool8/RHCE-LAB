@@ -8,11 +8,11 @@ options.
 
 From the firewalld project documentation:
 
-| Zone | Trust level | Default behavior |
-|---|---|---|
-| `public` | low | Only `ssh`, `dhcpv6-client`, `cockpit` accepted. The default zone on most distros. |
-| `internal` | medium | "Mostly trusted internal networks." A reasonable default + selected services accepted. |
-| `trusted` | absolute | All incoming connections accepted. Firewall effectively off for traffic in this zone. |
+| Zone       | Trust level | Default behavior                                                                       |
+| ---------- | ----------- | -------------------------------------------------------------------------------------- |
+| `public`   | low         | Only `ssh`, `dhcpv6-client`, `cockpit` accepted. The default zone on most distros.     |
+| `internal` | medium      | "Mostly trusted internal networks." A reasonable default + selected services accepted. |
+| `trusted`  | absolute    | All incoming connections accepted. Firewall effectively off for traffic in this zone.  |
 
 ## Why `internal`
 
@@ -20,7 +20,7 @@ From the firewalld project documentation:
   where SSH from the host arrives). Keeping the lab subnet here would mean
   every NFS / HTTP service we open on the repo server would also be
   accessible from `eth0`. Bad isolation.
-- **`trusted`** would work but accepts *all* traffic unconditionally. The
+- **`trusted`** would work but accepts _all_ traffic unconditionally. The
   RHCE exam contains firewalld objectives — students need to practice
   `firewall-cmd --add-service=nfs --zone=...` against a firewall that is
   actually filtering. `trusted` removes that practice surface.
@@ -61,10 +61,10 @@ a misconfigured interface that ends up in the wrong zone.
 
 ## What services are opened where
 
-| Zone | Services |
-|---|---|
-| `public` (eth0, NAT) | distribution defaults: `ssh`, `dhcpv6-client`, `cockpit` |
-| `internal` (192.168.56.0/24) | repo-server adds: `http`, `nfs`, `mountd`, `rpc-bind` |
+| Zone                         | Services                                                 |
+| ---------------------------- | -------------------------------------------------------- |
+| `public` (eth0, NAT)         | distribution defaults: `ssh`, `dhcpv6-client`, `cockpit` |
+| `internal` (192.168.56.0/24) | repo-server adds: `http`, `nfs`, `mountd`, `rpc-bind`    |
 
 Other VMs (control, nodes) add nothing to `internal` — they are NFS / HTTP
 clients only.

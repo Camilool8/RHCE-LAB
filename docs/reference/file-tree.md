@@ -49,47 +49,55 @@ RHCE-LAB/
 ## Per-directory purpose
 
 ### `scripts/common/`
+
 Scripts that every VM runs in this order:
+
 1. `base-setup.sh` — installs `firewalld`, `NetworkManager`, base utilities; binds the lab subnet to firewalld's `internal` zone.
 2. `configure-lab-network.sh` — assigns the lab IP to `eth1` via NetworkManager keyfile, with `connection.zone=internal`.
 3. `create-users.sh` — creates the `student` and `redhat` users.
 
 ### `scripts/repo-server/`
+
 Run only on the `repo` VM, after the common scripts. Set up the HTTP repos,
 NFS exports, and GPG key publishing.
 
 ### `scripts/control/`
+
 Run only on the `control` VM. Installs `ansible-core`, builds/installs
 `ansible-navigator`, populates `/etc/hosts`, pre-pulls the execution
 environment image.
 
 ### `scripts/node/`
+
 Run only on the managed nodes. Authorizes the `RH294-LAB` public key for
 `student`, builds the `research` VG, sets up NFS automount.
 
 ### `files/`
+
 Anything uploaded verbatim to a VM via Vagrant's `file` provisioner.
 
 ### `lab/`
+
 The 18 EX294 practice tasks and their reference solutions. Read-only — do
 not edit while practicing.
 
 ### `disks/`
+
 Provider-specific extra-disk files (`.vdi`, `.vmdk`, `.qcow2`). Created on
 demand, deleted by `vagrant destroy`. Always gitignored.
 
 ### `iso/`
+
 Drop a DVD ISO here to get an offline package mirror — see
 [attach-iso.md](../how-to/attach-iso.md).
 
 ### `docs/`
+
 The documentation you are reading.
 
 ### Internal directories
+
 - `.vagrant/` — Vagrant's per-machine state. Gitignored.
-- `docs/superpowers/` — design specs and implementation plans for this
-  project. Useful if you are modifying the lab; not relevant for
-  practicing.
 
 ## Related
 

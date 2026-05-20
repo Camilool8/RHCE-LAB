@@ -2,7 +2,7 @@
 
 By default the repo server's `BaseOS` and `AppStream` directories are
 empty-but-valid repository structures. That is enough for the exam tasks that
-*create* repository files (task 2), but if you want a true offline package
+_create_ repository files (task 2), but if you want a true offline package
 mirror — so `dnf install` works without internet — drop a DVD ISO in.
 
 ## Step 1 — Place the ISO
