@@ -79,7 +79,6 @@ puts "==> RHCE-LAB: host=#{HOST_OS}/#{HOST_ARCH} provider=#{PROVIDER} box_arch=#
 NET   = settings['network']['subnet']
 MASK  = settings['network']['netmask']
 BOX   = settings['box']['name']
-ISO   = Dir.glob(File.join(ROOT, 'iso', '*.iso')).first
 
 repo_cfg = settings['vms']['repo_server']
 ctrl_cfg = settings['vms']['control']
@@ -168,23 +167,6 @@ def lab_attach_extra_disk(m, vm_name, idx, size_gb)
   end
 end
 
-def lab_attach_iso(m, iso_path)
-  return unless iso_path
-  case PROVIDER
-  when 'virtualbox', 'vmware_desktop'
-    m.vm.disk :dvd, name: 'lab-iso', file: iso_path
-  when 'libvirt'
-    m.vm.provider 'libvirt' do |lv|
-      lv.storage :file, device: :cdrom, path: iso_path
-    end
-  when 'parallels'
-    m.vm.provider 'parallels' do |prl|
-      prl.customize ['set', :id, '--device-set', 'cdrom0',
-                     '--image', iso_path, '--connect']
-    end
-  end
-end
-
 Vagrant.configure('2') do |config|
   config.vm.box              = BOX
   config.vm.box_architecture = BOX_ARCH
@@ -196,7 +178,6 @@ Vagrant.configure('2') do |config|
     m.vm.hostname = repo_cfg['hostname']
     lab_apply_basics(m, repo_cfg, 'rhce-repo-server')
     lab_private_network(m, REPO_IP)
-    lab_attach_iso(m, ISO)
     m.vm.provision 'shell', path: 'scripts/common/base-setup.sh',
                    args: [SUBNET_CIDR]
     m.vm.provision 'shell', path: 'scripts/common/configure-lab-network.sh',
@@ -218,6 +199,8 @@ Vagrant.configure('2') do |config|
                    destination: '/tmp/RH294-LAB.pub'
     m.vm.provision 'file', source: 'files/vimrc',
                    destination: '/tmp/vimrc'
+    m.vm.provision 'file', source: 'scripts/verify',
+                   destination: '/tmp/verify'
     m.vm.provision 'shell', path: 'scripts/common/base-setup.sh',
                    args: [SUBNET_CIDR]
     m.vm.provision 'shell', path: 'scripts/common/configure-lab-network.sh',

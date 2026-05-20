@@ -31,9 +31,6 @@ RHCE-LAB/
 │   ├── tasks/                   # task-01.txt … task-18.txt
 │   └── solutions/               # answer-01.md … answer-18.md
 │
-├── iso/                         # optional ISO drop (see attach-iso.md)
-│   └── README.md
-│
 ├── disks/                       # per-node extra disk files, gitignored
 │
 ├── .vagrant/                    # Vagrant state, gitignored
@@ -58,8 +55,12 @@ Scripts that every VM runs in this order:
 
 ### `scripts/repo-server/`
 
-Run only on the `repo` VM, after the common scripts. Set up the HTTP repos,
-NFS exports, and GPG key publishing.
+Run only on the `repo` VM, after the common scripts. Mirror the upstream
+AlmaLinux BaseOS and AppStream into `/var/www/html/repo/` with
+`dnf reposync` (the only step that needs internet — once complete the
+rest of the lab is fully offline-capable), expose them via HTTP and NFS,
+and publish the distribution GPG key. See
+[`explanation/offline-mirror.md`](../explanation/offline-mirror.md).
 
 ### `scripts/control/`
 
@@ -85,11 +86,6 @@ not edit while practicing.
 
 Provider-specific extra-disk files (`.vdi`, `.vmdk`, `.qcow2`). Created on
 demand, deleted by `vagrant destroy`. Always gitignored.
-
-### `iso/`
-
-Drop a DVD ISO here to get an offline package mirror — see
-[attach-iso.md](../how-to/attach-iso.md).
 
 ### `docs/`
 

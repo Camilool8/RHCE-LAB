@@ -30,7 +30,13 @@ rm -rf disks/
 vagrant up
 ```
 
-The first `vagrant up` will download the new box.
+The first `vagrant up` downloads the new box. The repo VM's `dnf
+reposync` step auto-detects the RHEL repo IDs
+(`rhel-9-for-*-baseos-rpms` and `rhel-9-for-*-appstream-rpms`)
+instead of AlmaLinux's `baseos` / `appstream` — but only if the repo VM
+has an active subscription. If you do not subscribe the repo VM before
+this step, the mirror falls back to whatever vendor repos the box was
+shipped with.
 
 ## Step 4 — Register the control node
 

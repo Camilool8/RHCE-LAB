@@ -24,12 +24,12 @@ Goal-oriented recipes. Each guide solves one problem.
 - [Install prerequisites for your host OS](how-to/install-prerequisites.md)
 - [Start, stop, and reset the lab](how-to/start-stop-reset.md)
 - [Snapshot and revert to a clean baseline](how-to/snapshot-and-revert.md)
-- [Attach an ISO for offline package mirroring](how-to/attach-iso.md)
 - [Change the lab subnet](how-to/change-lab-subnet.md)
 - [Use RHEL instead of AlmaLinux with a subscription](how-to/use-rhel-with-subscription.md)
 
 ### Daily practice
 - [Practice one of the 18 exam tasks](how-to/practice-a-task.md)
+- [Score your work with the task verifier](../scripts/verify/README.md)
 - [Use `ansible-navigator`](how-to/use-ansible-navigator.md)
 - [Work around the pip-ansible "Illegal instruction" crash](how-to/work-around-ansible-illegal-instruction.md)
 
@@ -62,3 +62,5 @@ Discussion of design decisions.
 - [NFS automount](explanation/nfs-automount.md) — systemd automount over `fstab + bg`
 - [`ansible-navigator` install paths](explanation/ansible-navigator-install.md) — AAP vs EPEL vs pip
 - [Per-provider quirks](explanation/per-provider-quirks.md) — what really differs
+- [Offline package mirror](explanation/offline-mirror.md) — how the lab works without an ISO
+- [Known task discrepancies](explanation/known-task-discrepancies.md) — places the tasks, solutions, and lab state don't quite agree

@@ -69,27 +69,43 @@ vagrant provision <vmname>
 ### `Unit file firewalld.service does not exist`
 
 The base image lacks `firewalld`. `scripts/common/base-setup.sh` installs it.
-If you see this error, the dnf install line failed (network, repo, mirror).
-Re-run:
+If you see this error, the dnf install line failed — either the host has
+no internet on first run, or the lab mirror on the repo VM is not ready
+yet. Confirm the repo VM provisioned successfully first, then re-run:
 
 ```bash
 vagrant provision <vmname>
 ```
 
+### `Failed to download metadata for repo 'lab-baseos'`
+
+The managed node is configured to use the lab mirror on `repo-server`
+(`/etc/yum.repos.d/lab-offline.repo`), but cannot reach it. Common causes:
+
+- The `repo` VM is not running, or never finished its initial reposync.
+  Check with `vagrant status` and look at the repo provisioner log.
+- The lab subnet is broken. See
+  [Troubleshoot the lab network](troubleshoot-network.md).
+
+Bring `repo` up, then re-provision the affected node.
+
 ### `No match for argument: oniguruma-devel`
 
-EPEL or CRB (CodeReady Builder) is not enabled. `scripts/control/setup-control.sh`
-enables both, but if your host has no internet during provisioning, EPEL
-cannot be installed. Either:
+EPEL or CRB (CodeReady Builder) is not enabled on the control node.
+`scripts/control/setup-control.sh` enables both, but EPEL is fetched
+from the internet (not the lab mirror). If the control VM has no
+internet during provisioning, EPEL fails and the pip fallback path for
+`ansible-navigator` cannot build its dependencies. Either:
 
 1. Provide internet and re-run `vagrant provision control`, or
-2. Accept that `ansible-navigator` cannot be installed via pip on this run;
-   it will only work with `--execution-environment true` once the EE image
-   is available.
+2. Accept that `ansible-navigator` cannot be installed via pip on this
+   run; it will only work with `--execution-environment true` once
+   the EE image is available.
 
 ### `Failed to build onigurumacffi`
 
-`oniguruma-devel` is missing — see above. EPEL + CRB are required.
+`oniguruma-devel` is missing on the control node — see above. EPEL + CRB
+are required for the pip-fallback path.
 
 ### `cannot chdir to /home/vagrant: Permission denied`
 

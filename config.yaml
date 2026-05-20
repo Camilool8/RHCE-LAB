@@ -8,7 +8,7 @@ vms:
   repo_server:
     hostname: "repo-server"
     ip: "192.168.56.40"
-    memory: 1024
+    memory: 2048              # reposync of BaseOS+AppStream wants headroom
     cpus: 2
   control:
     hostname: "ansible-control"
@@ -21,8 +21,10 @@ vms:
     memory: 1280
     cpus: 1
     extra_disks:
-      - size: 2                 # /dev/sdb — raw, used by task 17
-      - size: 2                 # /dev/sdc — built into VG 'research', task 16
+      - size: 2                 # raw disk for task 17 (1200 MiB fits)
+      - size: 1                 # extra disk for VG 'research' (task 16)
+                                # — sized so 1200 MiB *doesn't* fit, forcing the
+                                #   rescue path that falls back to 800 MiB
 
 box:
   name: "almalinux/9"

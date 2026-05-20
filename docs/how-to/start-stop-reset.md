@@ -46,8 +46,9 @@ vagrant suspend node1     # just one
 ## Reset the lab from a clean baseline
 
 Use snapshots, not destroy. See [Snapshot and revert](snapshot-and-revert.md).
-Destroying and re-provisioning re-downloads packages and takes 20+ minutes;
-restoring a snapshot is seconds.
+Restoring a snapshot is seconds; destroying and re-provisioning means
+re-running `dnf reposync` on the repo server (up to 20 minutes) plus the
+rest of provisioning (~10 minutes), so 30+ minutes per cycle.
 
 ## Destroy and rebuild
 
@@ -58,13 +59,19 @@ vagrant destroy -f node1
 vagrant up node1
 ```
 
-To wipe the whole lab and start over:
+A single node rebuild does NOT trigger the reposync — that only runs on
+the `repo` VM.
+
+To wipe the whole lab and start over (including the offline mirror):
 
 ```bash
 vagrant destroy -f
 rm -rf disks/
 vagrant up
 ```
+
+This re-downloads the BaseOS + AppStream mirror from the internet.
+[Offline package mirror](../explanation/offline-mirror.md) explains why.
 
 ## See the current state of every VM
 

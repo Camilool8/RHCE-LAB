@@ -34,15 +34,15 @@ Solid lines = repo services (HTTP repos + NFS automount). Dotted lines = ansible
 
 ## VMs
 
-| Vagrant name | Hostname          | Lab IP        | RAM     | vCPU | Role                                  |
-| ------------ | ----------------- | ------------- | ------- | ---- | ------------------------------------- |
-| `repo`       | `repo-server`     | 192.168.56.40 | 1024 MB | 2    | HTTP repos, NFS exports, GPG key host |
-| `control`    | `ansible-control` | 192.168.56.50 | 2048 MB | 2    | Ansible control node                  |
-| `node1`      | `node1`           | 192.168.56.51 | 1280 MB | 1    | Managed node — group `dev`            |
-| `node2`      | `node2`           | 192.168.56.52 | 1280 MB | 1    | Managed node — group `test`           |
-| `node3`      | `node3`           | 192.168.56.53 | 1280 MB | 1    | Managed node — group `prod`           |
-| `node4`      | `node4`           | 192.168.56.54 | 1280 MB | 1    | Managed node — group `prod`           |
-| `node5`      | `node5`           | 192.168.56.55 | 1280 MB | 1    | Managed node — group `balancers`      |
+| Vagrant name | Hostname          | Lab IP        | RAM     | vCPU | Role                                                                 |
+| ------------ | ----------------- | ------------- | ------- | ---- | -------------------------------------------------------------------- |
+| `repo`       | `repo-server`     | 192.168.56.40 | 2048 MB | 2    | Offline BaseOS + AppStream mirror (HTTP + NFS), GPG key host         |
+| `control`    | `ansible-control` | 192.168.56.50 | 2048 MB | 2    | Ansible control node                                                 |
+| `node1`      | `node1`           | 192.168.56.51 | 1280 MB | 1    | Managed node — group `dev`                                           |
+| `node2`      | `node2`           | 192.168.56.52 | 1280 MB | 1    | Managed node — group `test`                                          |
+| `node3`      | `node3`           | 192.168.56.53 | 1280 MB | 1    | Managed node — group `prod`                                          |
+| `node4`      | `node4`           | 192.168.56.54 | 1280 MB | 1    | Managed node — group `prod`                                          |
+| `node5`      | `node5`           | 192.168.56.55 | 1280 MB | 1    | Managed node — group `balancers`                                     |
 
 All defaults are configurable in [`config.yaml`](config-yaml.md).
 
@@ -92,9 +92,11 @@ prod
 
 Approximate footprint when all seven VMs are running:
 
-- RAM: ~10 GB (1 + 2 + 5×1.28)
+- RAM: ~10.4 GB (2 + 2 + 5×1.28)
 - vCPU: ~9 (oversubscribed; 4-core hosts work fine)
-- Disk: ~80 GB total across all VM clones + the cached box image
+- Disk: ~80 GB total across VM clones, plus ~18 GB inside the repo VM for
+  the BaseOS + AppStream mirror — see
+  [Offline package mirror](../explanation/offline-mirror.md).
 
 ## Related
 

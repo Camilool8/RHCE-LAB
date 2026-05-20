@@ -1,10 +1,22 @@
 # Troubleshoot the lab network
 
-Symptom: `ansible all -m ping` fails with `UNREACHABLE`, or
-`curl http://192.168.56.40/repo/` from the control node times out, or
-NFS automount entries exist on a node but `ls /mnt/BaseOS` fails.
+Symptom: any of these fails —
 
-Work through these checks in order.
+- `ansible all -m ping` returns `UNREACHABLE`.
+- `curl http://192.168.56.40/repo/` from the control node times out.
+- `dnf install` on a managed node says `Failed to download metadata for
+  repo 'lab-baseos'`.
+- NFS automount entries exist on a node but `ls /mnt/BaseOS` fails.
+
+The lab uses two paths to the repo server:
+
+- **HTTP** (`http://192.168.56.40/repo/...`) is what managed nodes use
+  for `dnf install` via `/etc/yum.repos.d/lab-offline.repo`.
+- **NFS** (`/mnt/BaseOS`, `/mnt/AppStream`) is the automount that
+  task 2's `baseurl: file:///mnt/...` resolves against.
+
+Either path can fail independently. Work through the checks below in
+order.
 
 ## Check 1 — Does the lab interface have an IP inside the guest?
 

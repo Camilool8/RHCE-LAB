@@ -1,5 +1,4 @@
 .vagrant/
-iso/*.iso
 disks/
 files/keys/
 *.log

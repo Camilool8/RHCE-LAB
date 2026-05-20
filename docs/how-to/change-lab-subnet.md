@@ -33,8 +33,8 @@ vms:
 ## Step 2 — Destroy and rebuild
 
 The lab subnet is wired into the firewalld zones, NFS exports, and the
-control node's `/etc/hosts`. The cleanest way to apply a subnet change is to
-rebuild:
+control node's `/etc/hosts`. The cleanest way to apply a subnet change is
+to rebuild:
 
 ```bash
 vagrant destroy -f
@@ -43,6 +43,9 @@ vagrant up
 ```
 
 Provisioning re-reads `config.yaml` and uses the new subnet everywhere.
+This also re-runs the repo VM's `dnf reposync` of BaseOS + AppStream,
+which adds 5 – 20 minutes to the rebuild — see
+[Offline package mirror](../explanation/offline-mirror.md).
 
 ## VMware Fusion only — also update vmnet2
 

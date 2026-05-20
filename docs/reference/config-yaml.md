@@ -14,7 +14,9 @@ vms:
   repo_server:
     hostname: "repo-server"
     ip: "192.168.56.40" # must match the `network.subnet` above
-    memory: 1024 # MB
+    memory: 2048 # MB. The repo server runs `dnf reposync` of BaseOS +
+                 # AppStream during first provisioning; 2 GB gives it
+                 # headroom for the mirror build.
     cpus: 2
 
   control:
@@ -25,14 +27,14 @@ vms:
 
   nodes:
     count: 5 # how many managed nodes (node1..nodeN)
-    base_ip:
-      51 # node1 = {subnet}.{base_ip},
-      # node2 = {subnet}.{base_ip+1}, ...
+    base_ip: 51 # node1 = {subnet}.{base_ip}, node2 = {subnet}.{base_ip+1}, ...
     memory: 1280
     cpus: 1
     extra_disks:
-      - size: 2 # GB. First extra disk (raw, task 17)
-      - size: 2 # GB. Second extra disk (research VG, task 16)
+      - size: 2 # GB. First extra disk — used by task 17. 1200 MiB always fits.
+      - size: 1 # GB. Second extra disk — used by task 16's VG `research`.
+                # Intentionally sized so 1200 MiB does NOT fit and the
+                # playbook's rescue branch falls back to 800 MiB.
 
 box:
   name: "almalinux/9" # Vagrant Cloud box
@@ -85,8 +87,14 @@ Per-node RAM (MB) and CPU count. Applied uniformly to all `count` nodes.
 ### `vms.nodes.extra_disks`
 
 A list. Each entry adds one extra virtual disk to **every** node. The lab
-expects exactly two entries — task 17 uses the first, the lab provisioner
-turns the second into the `research` VG. Size is in GB.
+expects exactly two entries:
+
+- The first disk (2 GB) is left raw; task 17 partitions it.
+- The second disk (1 GB) is pre-built into the `research` VG by
+  `scripts/node/setup-node.sh`; task 16 creates a logical volume in it.
+
+Sizes are deliberately asymmetric so the rescue branches in the reference
+solutions actually fire. See [Storage layout](storage-layout.md).
 
 ### `box.name`
 
