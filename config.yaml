@@ -31,3 +31,21 @@ lab:
   ansible_user: "student"
   ssh_key_name: "RH294-LAB"
   time_server: "172.25.254.250"
+
+providers:
+  # Auto-detection picks one from (host_os, host_arch, lab_arch).
+  # Set this string (e.g. "qemu", "libvirt", "parallels") to pin a provider.
+  default: ""
+
+  virtualbox: { enabled: true }
+  libvirt:    { enabled: true, network_name: "rhce-lab" }
+  parallels:  { enabled: true }
+  vmware_desktop: { enabled: true }
+
+  qemu:
+    enabled: true
+    # Paths used on macOS Apple Silicon scenario C (qemu + socket_vmnet).
+    socket_vmnet_client: "/opt/homebrew/opt/socket_vmnet/bin/socket_vmnet_client"
+    socket_vmnet_socket: "/var/run/socket_vmnet"
+    qemu_system_x86_64:  "/opt/homebrew/bin/qemu-system-x86_64"
+    qemu_system_aarch64: "/opt/homebrew/bin/qemu-system-aarch64"
