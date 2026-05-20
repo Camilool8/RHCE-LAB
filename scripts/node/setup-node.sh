@@ -20,15 +20,23 @@ chown student:student /home/student/.ssh/authorized_keys
 chmod 600 /home/student/.ssh/authorized_keys
 restorecon -R /home/student/.ssh 2>/dev/null || true
 
-# --- VG 'research' on /dev/sdc (task 16). /dev/sdb left raw for task 17. ---
-if [ -b /dev/sdc ]; then
+# --- VG 'research' on the second extra disk (task 16).
+# The device name depends on the Vagrant provider: VirtualBox/Parallels
+# expose SCSI/SATA as /dev/sd*, libvirt and qemu expose virtio as /dev/vd*.
+# The first extra disk (sdb/vdb) is intentionally left raw for task 17.
+RESEARCH_DISK=""
+for d in /dev/sdc /dev/vdc; do
+  if [ -b "$d" ]; then RESEARCH_DISK="$d"; break; fi
+done
+
+if [ -n "$RESEARCH_DISK" ]; then
   if ! vgs research &>/dev/null; then
-    pvcreate -y /dev/sdc
-    vgcreate research /dev/sdc
-    echo "Created volume group 'research' on /dev/sdc"
+    pvcreate -y "$RESEARCH_DISK"
+    vgcreate research "$RESEARCH_DISK"
+    echo "Created volume group 'research' on $RESEARCH_DISK"
   fi
 else
-  echo "WARN: /dev/sdc not present — VG 'research' not created"
+  echo "WARN: no extra disk found for VG 'research' (checked /dev/sdc, /dev/vdc)"
 fi
 
 # --- Mount BaseOS/AppStream from the repo server at /mnt (task 2) ---
