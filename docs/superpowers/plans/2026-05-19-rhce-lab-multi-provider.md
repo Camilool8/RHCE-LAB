@@ -569,8 +569,11 @@ def lab_attach_extra_disk(m, vm_name, idx, size_gb)
       SH
     end
     m.vm.provider 'qemu' do |qe|
-      args = qe.extra_qemu_args || []
-      qe.extra_qemu_args = args + [
+      # vagrant-qemu initialises extra_qemu_args to its UNSET_VALUE sentinel
+      # (a Symbol), so `|| []` does not fall back. Coerce explicitly.
+      existing = qe.extra_qemu_args
+      existing = [] unless existing.is_a?(Array)
+      qe.extra_qemu_args = existing + [
         '-drive', "file=#{disk_file},if=none,id=extra#{idx},format=qcow2",
         '-device', "virtio-blk-pci,drive=extra#{idx},serial=extra#{idx}"
       ]
@@ -594,8 +597,9 @@ def lab_attach_iso(m, iso_path)
     end
   when 'qemu'
     m.vm.provider 'qemu' do |qe|
-      args = qe.extra_qemu_args || []
-      qe.extra_qemu_args = args + [
+      existing = qe.extra_qemu_args
+      existing = [] unless existing.is_a?(Array)
+      qe.extra_qemu_args = existing + [
         '-drive', "file=#{iso_path},media=cdrom,readonly=on"
       ]
     end
