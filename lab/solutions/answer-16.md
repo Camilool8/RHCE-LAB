@@ -1,62 +1,94 @@
-Install the `community.general` collection to use the `lvol` module for managing LVM logical volumes. You can do this by running the following command:
+## Task 16 — Logical volume in VG `research`
+
+> Create a 1200 MiB ext4 logical volume named `data` in VG `research`.
+> If 1200 MiB doesn't fit, print an error message and fall back to
+> 800 MiB. If the VG doesn't exist, print an error. Don't mount it.
+
+### What this teaches
+
+- `block: / rescue: / always:` — the robust way to express "try X, if it
+  fails fall back to Y" in Ansible. The `rescue:` only runs when the
+  `block:` raises, so you don't have to predict failure conditions up
+  front. `always:` runs whether `block:` or `rescue:` ran.
+- `ansible_facts.lvm` (gathered automatically when `lvm2` is installed)
+  exposes the current VG / LV layout. Read it instead of shelling out
+  to `vgs` / `lvs`.
+- The `community.general.lvol` and `community.general.filesystem`
+  modules are idempotent in their own right, so re-running the playbook
+  doesn't grow / reformat the LV.
+
+### Prerequisite: install the collection
 
 ```bash
-ansible-galaxy collection install community.general -p mycollection/
+ansible-galaxy collection install community.general -p ./mycollection/
 ```
 
-Create a playbook file named `lvm.yml` with the following content:
+Already wired into `ansible.cfg` via `collections_path = ./mycollection`
+(task 1).
 
-```lvm.yml
-- name: LVM config
+### `lvm.yml`
+
+```yaml
+- name: Create the research/data logical volume
   hosts: all
-  become: True
+  become: true
+
   tasks:
+    - name: Fail loudly if VG 'research' does not exist
+      ansible.builtin.fail:
+        msg: volume group does not exist
+      when: "'research' not in ansible_facts.lvm.vgs | default({})"
 
-    - name: Validate datails
+    - name: Create LV with the requested size, fall back if it doesn't fit
       block:
-        - name: Validate if vgs 'research' exists
-          when: "'research' not in ansible_lvm.vgs"
-          ansible.builtin.debug:
-            msg: volume group does not exist
-
-        - name: Create a logical volume of 1200m
-          when: "'research' in ansible_lvm.vgs"
+        - name: Try 1200 MiB
           community.general.lvol:
             vg: research
             lv: data
             size: 1200m
-
+            state: present
       rescue:
-        - name: Cannot create a lv ?
-          when: "'research' in ansible_lvm.vgs"
+        - name: Tell the user we're falling back
           ansible.builtin.debug:
             msg: could not create logical volume of that size
- 
-        - name: Create a logical volume of 800m
-          when: "'research' in ansible_lvm.vgs"
+        - name: Fall back to 800 MiB
           community.general.lvol:
             vg: research
             lv: data
             size: 800m
+            state: present
 
-      always:
-
-        - name: Create a ext4 filesystem on /dev/research/data
-          when: "'data' in ansible_lvm.lvs"
-          community.general.filesystem:
-            fstype: ext4
-            dev: /dev/research/data
+    - name: Format the LV as ext4
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/research/data
 ```
 
-Execute the playbook using the following command:
+### Run
 
 ```bash
 ansible-playbook lvm.yml
 ```
 
-Validate the results by checking the logical volume and filesystem creation:
+### Verify
 
 ```bash
-ansible all -a 'lsblk' -b
-ansible all -a 'lsblk /dev/research/data --fs' -b
+ansible all -b -a 'lvs research/data'
+ansible all -b -a 'blkid /dev/research/data'
+# fstab should NOT have an entry for this LV, and findmnt must come up empty:
+ansible all -b -a 'findmnt /dev/research/data || echo unmounted'
 ```
+
+### Best-practice notes
+
+- **`ansible_facts.lvm.vgs`** instead of `ansible_lvm.vgs` — the
+  bare-name form was deprecated in ansible-core 2.10; future-proof
+  code uses the `ansible_facts.*` namespace.
+- **FQCN modules** (`community.general.lvol`, not `lvol`) — required
+  for ansible-navigator EE images, recommended for everything.
+- **No `when:` inside `block:`** — the block-level fail-fast on the VG
+  check makes the rest of the play unconditional and easier to read.
+- The reference lab sizes the `research` VG to **1 GiB** specifically
+  so the 1200 MiB request fails and the `rescue:` branch fires every
+  time. That's how you know the rescue logic actually works — not just
+  that it parses.

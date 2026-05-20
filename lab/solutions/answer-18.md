@@ -1,53 +1,141 @@
-Install the role `linux-system-roles.selinux` using Ansible Galaxy:
+## Task 18 — SELinux role: permissive then enforcing (via `ansible-navigator`)
+
+### What this teaches
+
+- **The selinux role's "I need a reboot" failure pattern.** When the
+  role transitions to/from `disabled`, it sets the fact
+  `selinux_reboot_required: true` and **fails on purpose** so the
+  playbook stops and you handle the reboot explicitly. The canonical
+  response is the **block / rescue + reboot + re-include the role**
+  pattern below.
+- **`include_role:`** (dynamic) vs `roles:` (static). Dynamic includes
+  can be wrapped in block/rescue; the static `roles:` keyword cannot.
+- **`ansible-navigator run`** as a drop-in replacement for
+  `ansible-playbook`, executing inside an execution-environment
+  container. The lab's `~/.ansible-navigator.yml` (laid down by
+  `scripts/control/setup-control.sh`) pre-configures the EE image.
+
+### Prerequisite — install the role
 
 ```bash
-ansible-galaxy role install linux-system-roles.selinux -p roles/
+ansible-galaxy role install linux-system-roles.selinux -p ./roles/
 ```
 
-Create a playbook named selinux.yml:
+(Or `dnf install -y rhel-system-roles` if you prefer the RPM path —
+the role then lives at `/usr/share/ansible/roles/rhel-system-roles.selinux`.)
 
-```selinux.yml
-- name: Selinux config 1
+### `selinux.yml` — flip to permissive
+
+```yaml
+- name: Set SELinux mode to permissive
   hosts: all
-  become: True
+  become: true
   vars:
-    - selinux_state: permissive
-  roles:
-    - ./roles/linux-system-roles.selinux
+    selinux_state: permissive
+
+  tasks:
+    - name: Apply the selinux role; reboot only if it says so
+      block:
+        - name: First pass
+          ansible.builtin.include_role:
+            name: linux-system-roles.selinux
+      rescue:
+        - name: Bail out if the failure was something other than reboot
+          ansible.builtin.fail:
+            msg: "selinux role failed for a non-reboot reason"
+          when: not (selinux_reboot_required | default(false))
+
+        - name: Reboot to actualize SELinux mode change
+          ansible.builtin.reboot:
+            msg: "Rebooting for SELinux mode change"
+            reboot_timeout: 600
+
+        - name: Re-apply selinux role after reboot
+          ansible.builtin.include_role:
+            name: linux-system-roles.selinux
 ```
 
-Execute the playbook to set SELinux to permissive mode:
+### `selinux2.yml` — flip to enforcing
+
+Same shape, one variable changed:
+
+```yaml
+- name: Set SELinux mode to enforcing
+  hosts: all
+  become: true
+  vars:
+    selinux_state: enforcing
+
+  tasks:
+    - name: Apply the selinux role; reboot only if it says so
+      block:
+        - name: First pass
+          ansible.builtin.include_role:
+            name: linux-system-roles.selinux
+      rescue:
+        - name: Bail out if the failure was something other than reboot
+          ansible.builtin.fail:
+            msg: "selinux role failed for a non-reboot reason"
+          when: not (selinux_reboot_required | default(false))
+
+        - name: Reboot to actualize SELinux mode change
+          ansible.builtin.reboot:
+            msg: "Rebooting for SELinux mode change"
+            reboot_timeout: 600
+
+        - name: Re-apply selinux role after reboot
+          ansible.builtin.include_role:
+            name: linux-system-roles.selinux
+```
+
+(Real-life pattern: extract that `tasks:` block into a tiny wrapper
+role so `selinux.yml` and `selinux2.yml` just include it with
+different `selinux_state`. Kept inline here so the solution is one
+copy-paste per file.)
+
+### Run
 
 ```bash
 ansible-playbook selinux.yml
+ansible-navigator run selinux2.yml -m stdout
 ```
 
-Check the SELinux status on all hosts:
+The `-m stdout` flag tells `ansible-navigator` to print the play
+recap directly instead of launching the curses TUI — essential for
+a graded environment.
+
+### Verify
 
 ```bash
-ansible all -a 'sestatus' -b
+# Runtime state
+ansible all -b -a 'getenforce'
+# Enforcing
+
+# Persistent state — what /etc/selinux/config says is what survives reboot
+ansible all -b -a 'grep ^SELINUX= /etc/selinux/config'
+# SELINUX=enforcing
 ```
 
-To set SELinux to enforcing mode create another playbook:
+### Best-practice notes
 
-```selinux2.yml
-- name: Selinux config 2
-  hosts: all
-  become: True
-  vars:
-    - selinux_state: enforcing
-  roles:
-    - ./roles/linux-system-roles.selinux
-```
-
-Execute the second playbook to set SELinux to enforcing mode:
-
-```bash
-ansible-playbook selinux2.yml
-```
-
-Finally, check the SELinux status again:
-
-```bash
-ansible all -a 'sestatus' -b
-```
+- **Check `/etc/selinux/config`, not just `getenforce`.** A bare
+  `setenforce 0` would make `getenforce` say "Permissive" but the file
+  would still say "enforcing" — the change wouldn't survive reboot.
+  The role updates both; that's the whole point.
+- **`reboot_timeout: 600`** is a defensive ceiling — `reboot` waits
+  for the host to come back, so a 10-minute window covers slow VMs.
+  Default is 600 already; declaring it makes intent explicit.
+- **`include_role:` vs `roles:` matters.** `roles:` runs statically
+  *before* `tasks:`, so you cannot wrap it in `block:`. `include_role:`
+  runs in task order and supports rescue/always. For any role that
+  might need to reboot, use `include_role:`.
+- **The role is documented at
+  [github.com/linux-system-roles/selinux](https://github.com/linux-system-roles/selinux)**
+  for the full variable list (`selinux_booleans`, `selinux_fcontexts`,
+  `selinux_ports`, …). For the exam we only need `selinux_state`.
+- **AlmaLinux 9 boots in `enforcing` by default.** Flipping to
+  `permissive` and back to `enforcing` doesn't actually require a
+  reboot — the role only forces one when the transition crosses the
+  `disabled` boundary. The rescue branch is therefore *latent* here
+  but correct, and would save points the moment SELinux ever starts
+  disabled.

@@ -27,6 +27,17 @@ restorecon -R /home/student/.ssh 2>/dev/null || true
 install -d -m 755 -o student -g student /home/student/ansible
 install -m 644 -o student -g student /tmp/vimrc /home/student/.vimrc
 
+# Install the task verifier at /home/student/verify/. Re-runs of
+# `vagrant provision control` overwrite this directory with the latest
+# scripts from the host so editing scripts/verify/ on the host and
+# re-provisioning is the supported update flow.
+if [ -d /tmp/verify ]; then
+    rm -rf /home/student/verify
+    cp -r /tmp/verify /home/student/verify
+    chown -R student:student /home/student/verify
+    find /home/student/verify -name '*.sh' -exec chmod +x {} \;
+fi
+
 sed -i '/# RHCE-LAB BEGIN/,/# RHCE-LAB END/d' /etc/hosts
 {
   echo "# RHCE-LAB BEGIN"

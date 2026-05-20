@@ -53,15 +53,29 @@ See [Use ansible-navigator](use-ansible-navigator.md).
 
 ## Step 5 — Verify
 
-The task description tells you what to verify. Common patterns:
+Two ways:
+
+**Quick** — ad-hoc Ansible commands against the relevant group:
 
 ```bash
-# Run an ad-hoc check
 ansible all -m shell -a 'cat /etc/myhosts'
-
-# SSH to a managed node and inspect directly
 ssh -i ~/.ssh/RH294-LAB student@node1
 ```
+
+**Thorough** — the task verifier scores your work the way the EX294
+grader would (apply twice for idempotency, SSH-check end state, reboot
+survival). It is preinstalled at `/home/student/verify/`:
+
+```bash
+vagrant ssh control
+sudo -iu student
+~/verify/verify-all.sh --task 1
+```
+
+See [`scripts/verify/README.md`](../../scripts/verify/README.md) for
+the full flag list. The verifier sums to 300 points across all 18
+tasks; passing line is 210 (70 %). If you edit verifier scripts on
+the host, push them with `vagrant provision control`.
 
 ## Step 6 — Compare with the reference solution
 
@@ -71,8 +85,11 @@ exit             # leave the control VM
 cat lab/solutions/answer-01.md
 ```
 
-The reference solutions are intentionally terse — they show _a_ valid answer,
-not the only one.
+Each reference solution shows _a_ valid answer (not the only one) plus
+a "What this teaches" section and best-practice notes — read those even
+if your own answer passed the verifier. Caveats and intentional
+fixes-to-the-original-spec are catalogued in
+[Known task discrepancies](../explanation/known-task-discrepancies.md).
 
 ## Step 7 — Reset for the next attempt
 

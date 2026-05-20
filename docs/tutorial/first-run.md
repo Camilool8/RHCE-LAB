@@ -1,9 +1,18 @@
 # First run: from zero to `ansible all -m ping`
 
-This tutorial walks you from an empty machine to a working seven-VM Ansible lab
-where the control node can manage all five managed nodes. Expect 30 to 60
-minutes the first time, mostly spent waiting for the box image to download
-and for VMs to provision.
+This tutorial walks you from an empty machine to a working seven-VM Ansible
+lab where the control node can manage all five managed nodes. Expect **30
+to 90 minutes** the first time, mostly spent on three downloads:
+
+1. The base box image (~2 GB).
+2. The repo server's `dnf reposync` of BaseOS + AppStream (~18 GB). This
+   is what makes the lab fully offline after first boot — see
+   [Offline package mirror](../explanation/offline-mirror.md).
+3. The `ansible-navigator` execution-environment image from ghcr.io
+   (~1 GB).
+
+After this one run, you can `vagrant halt`, disconnect from the internet,
+`vagrant up` again, and do every practice task without network access.
 
 ## What you will end with
 
@@ -20,8 +29,8 @@ node5 | SUCCESS => { "ping": "pong", ... }
 
 - A computer with **at least 10 GB of free RAM and 80 GB of free disk**.
 - The ability to run `sudo` on your machine.
-- An internet connection (the first run downloads a ~2 GB box image plus
-  packages).
+- An internet connection for this first run only. After it completes the
+  lab works fully offline.
 
 ## Step 1 — Install the prerequisites for your host
 
@@ -57,9 +66,18 @@ LAB_PROVIDER=vmware_desktop vagrant up    # force VMware Fusion on a Mac
 
 See [Override variables](../reference/overrides.md) for the full list.
 
-Provisioning takes 15 to 30 minutes. You can safely walk away — do **not**
-open extra terminals to run `vagrant ssh` against the lab while `vagrant up`
-is in progress; concurrent SSH sessions can interrupt the provisioner.
+Provisioning runs in this order:
+
+1. **`repo`** comes up first and mirrors BaseOS + AppStream (5 – 20 min,
+   depending on connection speed).
+2. **`control`** installs `ansible-core`, `ansible-navigator`, and pulls
+   the execution-environment image.
+3. **`node1` … `node5`** each point dnf at the lab mirror, build the
+   `research` volume group, and authorize the control node's SSH key.
+
+You can safely walk away. Do **not** open extra terminals to run
+`vagrant ssh` against the lab while `vagrant up` is in progress —
+concurrent SSH sessions can interrupt the provisioner.
 
 ## Step 4 — Confirm the lab is up
 
@@ -125,11 +143,16 @@ crash](../how-to/work-around-ansible-illegal-instruction.md) for why.
 
 ## Step 6 — Take a clean baseline snapshot
 
-Once you have a working lab, take a snapshot you can revert to between
-practice sessions. See [Snapshot and revert](../how-to/snapshot-and-revert.md).
+Take a snapshot **now**, before you start any practice work. The reposync
+is the most expensive part of the first run; the snapshot lets you revert
+to a fully-mirrored, fully-provisioned lab in seconds instead of going
+through that download again.
+
+See [Snapshot and revert](../how-to/snapshot-and-revert.md).
 
 ## Where to go next
 
 - Read your first exam task: open [`lab/tasks/task-01.txt`](../../lab/tasks/task-01.txt).
 - Learn the daily workflow: [Practice one of the 18 exam tasks](../how-to/practice-a-task.md).
+- Score your work against an EX294-style grader: [Task verifier](../../scripts/verify/README.md).
 - Try `ansible-navigator`: [Use `ansible-navigator`](../how-to/use-ansible-navigator.md).

@@ -36,13 +36,32 @@ cat lab/tasks/task-01.txt
   hostnames match the lab's inventory exactly — no aliasing is needed.
 - Tasks expect to run as `student` on the control node, from
   `/home/student/ansible/`.
-- The `research` volume group used by task 16 is pre-created on each managed
-  node. See [Storage layout](storage-layout.md).
-- Task 17 expects an empty raw disk. The first extra disk on every node
-  (`/dev/sdb` or `/dev/vdb` or `/dev/nvme0n2` depending on provider) is left
-  unformatted for this.
+- The `research` volume group used by task 16 is pre-created on each
+  managed node. See [Storage layout](storage-layout.md).
+- Task 17's raw disk has a different device name on every provider
+  (`/dev/sdb`, `/dev/vdb`, or `/dev/nvme0n2`). The task description
+  explicitly asks the student to discover it at runtime via
+  `ansible_facts.devices` — the reference solution shows the canonical
+  pattern.
+
+## Scoring your work
+
+The lab includes an EX294-style grader at
+[`scripts/verify/`](../../scripts/verify/README.md). It is preinstalled
+on the control node at `/home/student/verify/`. Run as `student`:
+
+```bash
+~/verify/verify-all.sh           # state-only audit, fast
+~/verify/verify-all.sh --apply   # re-run all playbooks (twice each, idempotency-checked)
+~/verify/verify-all.sh --reboot  # add a reboot-survival pass
+```
+
+It prints a per-task scorecard and a 300-point total against the standard
+210/300 passing line.
 
 ## Related
 
 - [How-to: practice a task](../how-to/practice-a-task.md).
 - [Storage layout](storage-layout.md) — which device is which.
+- [Known task discrepancies](../explanation/known-task-discrepancies.md) —
+  where tasks, solutions, and lab state don't quite agree.

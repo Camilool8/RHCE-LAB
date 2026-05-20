@@ -1,7 +1,11 @@
 # Snapshot and revert to a clean baseline
 
-Take a snapshot after the first successful `vagrant up`. Revert to it whenever
-a practice session leaves the lab in a state you do not want to keep.
+Take a snapshot **after the first successful `vagrant up`** and before any
+practice work. The first run mirrors ~18 GB of packages onto the repo VM;
+a snapshot captures that state so a reset is seconds, not minutes.
+
+Revert to the snapshot whenever a practice session leaves the lab in a
+state you do not want to keep.
 
 The exact command depends on your provider.
 
