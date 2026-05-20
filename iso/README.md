@@ -7,7 +7,7 @@ Drop a RHEL 9 or AlmaLinux 9 **DVD ISO** here (optional).
   package mirror. The ISO is attached read-only to the repo VM and gets the
   right syntax for each Vagrant provider (VirtualBox/VMware via `config.vm.disk
   :dvd`, libvirt via `libvirt.storage :file device: :cdrom`, Parallels via
-  `prlctl set ... --device-set cdrom0`, QEMU via `-drive media=cdrom`).
+  `prlctl set ... --device-set cdrom0`).
 - **Without an ISO:** the repo server creates empty-but-valid BaseOS and
   AppStream repository structures (enough for task 2's `file://` repo task).
   Managed nodes use the AlmaLinux internet mirrors for actual package

@@ -1,8 +1,8 @@
 # RHCE-LAB
 
 Automated RHCE 9 (EX294) practice lab — a 7-VM Ansible environment deployed
-with Vagrant. Companion to RHCSA-LAB. Runs on macOS (Intel and Apple Silicon),
-Linux (x86_64 and arm64), and Windows.
+with Vagrant. Companion to RHCSA-LAB. Runs natively on macOS (Intel and Apple
+Silicon), Linux (x86_64 and arm64), and Windows.
 
 > Grading automation and the `bin/rhce-lab` exam CLI are delivered by a
 > follow-up plan (Grading & Exam Tooling). This README covers the
@@ -10,26 +10,26 @@ Linux (x86_64 and arm64), and Windows.
 
 ## Supported scenarios
 
+The lab runs **native-arch only** — guests match the host CPU. No cross-arch
+emulation.
+
 | Scenario | Host | Auto-selected provider | Plugin to install |
 |---|---|---|---|
-| **A. Native x86_64** | macOS Intel | `virtualbox` | (built-in) |
+| **Native x86_64** | macOS Intel | `virtualbox` | (built-in) |
 | | Linux x86_64 | `libvirt` | `vagrant-libvirt` |
 | | Windows x86_64 | `virtualbox` | (built-in) |
-| **B. Native arm64** | macOS Apple Silicon | `parallels` | `vagrant-parallels` |
+| **Native arm64** | macOS Apple Silicon | `parallels` | `vagrant-parallels` |
 | | Linux arm64 | `libvirt` (kvm) | `vagrant-libvirt` |
-| **C. arm64 → x86 emulation** | macOS Apple Silicon | `qemu` + `socket_vmnet` | `vagrant-qemu` |
-| | Linux arm64 | `libvirt` (tcg) | `vagrant-libvirt` |
 
 `vmware_desktop` is supported as a fallback on every host that has VMware
-Fusion or Workstation installed (free for personal use post-Broadcom).
+Fusion or Workstation installed (free for personal use post-Broadcom). It is
+the recommended choice for Apple Silicon Macs without Parallels Desktop.
 
 Selection order:
 1. `vagrant up --provider <name>` (CLI flag)
 2. `LAB_PROVIDER=<name>` env var
 3. `providers.default` in `config.yaml`
-4. Auto-detect from `(host_os, host_arch, lab_arch)`
-
-`LAB_ARCH=x86_64` on an arm64 host forces Scenario C.
+4. Auto-detect from `(host_os, host_arch)`
 
 ## Prerequisites by host
 
@@ -37,25 +37,20 @@ Selection order:
 - Install [VirtualBox 7.x](https://www.virtualbox.org/wiki/Downloads) and
   [Vagrant 2.4+](https://www.vagrantup.com/downloads).
 
-### macOS Apple Silicon — Scenario B (native arm64)
-- Install [Parallels Desktop](https://www.parallels.com/products/desktop/) Pro
-  or Business edition.
-- `vagrant plugin install vagrant-parallels`
+### macOS Apple Silicon
+Pick one — both are native-arm64 with hardware acceleration:
 
-### macOS Apple Silicon — Scenario C (qemu + socket_vmnet)
-- `brew install qemu socket_vmnet`
-- `vagrant plugin install vagrant-qemu`
-- Run the one-time host setup:
-  ```bash
-  ./scripts/host/setup-socket-vmnet.sh
-  ```
-  This installs a launchd daemon that runs `socket_vmnet` in shared mode on
-  the lab subnet (`192.168.56.0/24` by default). It needs `sudo` once.
-  Subsequent `vagrant up` runs do not need `sudo`.
-- Force this scenario explicitly when you also have Parallels:
-  ```bash
-  LAB_PROVIDER=qemu LAB_ARCH=x86_64 vagrant up
-  ```
+- **Parallels Desktop** (paid, Pro or Business edition required by
+  `vagrant-parallels`)
+  - Install from [parallels.com](https://www.parallels.com/products/desktop/)
+  - `vagrant plugin install vagrant-parallels`
+- **VMware Fusion** (free for personal use)
+  - Free Broadcom account → download Fusion 13.x
+  - `vagrant plugin install vagrant-vmware-desktop`
+  - Run with: `LAB_PROVIDER=vmware_desktop vagrant up`
+
+If you have neither, run the lab on a Linux x86_64 host (cloud VM, Intel Mac,
+etc.) — no code change needed.
 
 ### Linux x86_64 or arm64
 - Install Vagrant 2.4+, qemu, and libvirt:
@@ -63,8 +58,6 @@ Selection order:
   - Debian/Ubuntu: `sudo apt install qemu-system libvirt-daemon-system libvirt-dev ebtables libguestfs-tools`
 - `sudo systemctl enable --now libvirtd`
 - `vagrant plugin install vagrant-libvirt`
-- For Scenario C on arm64 Linux: also install `qemu-system-x86_64` and set
-  `LAB_ARCH=x86_64`.
 
 ### Windows x86_64
 - Install VirtualBox 7.x and Vagrant 2.4+. Disable Hyper-V (or accept
@@ -75,14 +68,13 @@ Selection order:
 ```bash
 cd RHCE-LAB
 cp /path/to/AlmaLinux-9-DVD.iso iso/      # optional — see iso/README.md
-vagrant up                                 # ~15-25 min on first run (native);
-                                           # significantly longer under TCG emulation
+vagrant up                                 # ~15-25 min on first run
 ```
 
 The Vagrantfile prints the chosen provider on the first line:
 
 ```
-==> RHCE-LAB: host=macos/arm64 lab_arch=x86_64 provider=qemu box_arch=amd64
+==> RHCE-LAB: host=macos/arm64 provider=parallels box_arch=arm64
 ```
 
 ## Topology
@@ -117,7 +109,7 @@ on the provider:
 | Provider | First extra | Second extra |
 |---|---|---|
 | virtualbox, parallels, vmware_desktop | `/dev/sdb` | `/dev/sdc` |
-| libvirt, qemu | `/dev/vdb` | `/dev/vdc` |
+| libvirt | `/dev/vdb` | `/dev/vdc` |
 
 The first extra disk is left raw for task 17. The second extra disk is
 pre-built into the volume group `research` for task 16. Provisioning scripts
@@ -159,17 +151,16 @@ sudo virsh snapshot-revert    rhce-ansible-control clean
 prlctl snapshot rhce-ansible-control -n clean
 prlctl snapshot-switch rhce-ansible-control -i <snapshot-id>
 
-# qemu — snapshot the qcow2 disks (VM must be off)
-qemu-img snapshot -c clean .vagrant/machines/node1/qemu/box.img
-qemu-img snapshot -a clean .vagrant/machines/node1/qemu/box.img
+# VMware Fusion
+vmrun snapshot ".vagrant/machines/control/vmware_desktop/<id>/control.vmx" clean
+vmrun revertToSnapshot ".vagrant/machines/control/vmware_desktop/<id>/control.vmx" clean
 ```
 
 ## Override env vars
 
 ```bash
-LAB_PROVIDER=qemu       vagrant up           # force qemu, even if parallels is auto-selected
-LAB_ARCH=x86_64         vagrant up           # force x86 emulation on an arm64 host
-vagrant up --provider libvirt                # Vagrant's native CLI flag also works
+LAB_PROVIDER=vmware_desktop vagrant up     # force VMware on a Mac with Parallels too
+vagrant up --provider libvirt              # Vagrant's native CLI flag also works
 ```
 
 ## Common commands
@@ -186,11 +177,6 @@ vagrant destroy -f
 
 - **"no provider matches host=..."** — auto-detection didn't match; set
   `LAB_PROVIDER` or `providers.default`.
-- **socket_vmnet not running (qemu only)** — re-run
-  `./scripts/host/setup-socket-vmnet.sh`, then check `sudo launchctl list | grep socket_vmnet`.
-- **`vagrant up` very slow under Scenario C** — TCG emulation is 5–20× slower
-  than native. First provisioning can take hours; subsequent `dnf` operations
-  also pay the tax. Take a snapshot once provisioned.
 - **Box variant missing for chosen provider** — verify with
   `curl -s https://app.vagrantup.com/api/v2/box/almalinux/9 | jq '.versions[0].providers[] | {name, architecture}'`.
   Fall back to `almalinux/9.aarch64` on arm64 if needed (edit `box.name` in

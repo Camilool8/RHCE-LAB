@@ -1,5 +1,22 @@
 # RHCE-LAB Multi-Provider Implementation Plan
 
+> **Revision note (2026-05-19):** This plan was partially executed. After
+> attempting Task 8 (live `vagrant up` on Apple Silicon under x86_64 TCG
+> emulation), the cross-arch path hit unresolved `vagrant-qemu` issue #67
+> (SSH version-banner timeout against AlmaLinux 9). The spec was revised to
+> drop cross-arch emulation entirely; the lab now supports **native-arch
+> only**. As a result the following are no longer part of the codebase:
+> - Task 3 — `scripts/host/setup-socket-vmnet.sh` (deleted)
+> - Task 4 — `scripts/common/configure-static-ip.sh` (deleted)
+> - The qemu provider branch in `lab_apply_basics` (removed)
+> - The `LAB_ARCH` env var and cross-arch libvirt branch (removed)
+> - The `providers.qemu` block in `config.yaml` (removed)
+>
+> Tasks 1, 2, 5, 6, 7 stay valid as a historical record but the Vagrantfile
+> in Task 6 and the README in Task 7 were further simplified after the
+> revision. The authoritative final state is the spec at
+> [2026-05-19-rhce-lab-multi-provider-design.md](../specs/2026-05-19-rhce-lab-multi-provider-design.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Refactor the lab so a single `vagrant up` works on macOS Intel, macOS Apple Silicon (native arm64 and arm64-emulating-x86_64), Linux (x86_64 and arm64), and Windows x86_64 — auto-detecting the right Vagrant provider per host.

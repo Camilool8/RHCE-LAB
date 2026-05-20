@@ -8,7 +8,7 @@ ROOT     = File.dirname(__FILE__)
 settings = YAML.load_file(File.join(ROOT, 'config.yaml'))
 
 # -----------------------------------------------------------------------------
-# Host + provider detection
+# Host + provider detection (native-arch only — guests match host arch)
 # -----------------------------------------------------------------------------
 
 def detect_host_os
@@ -30,16 +30,14 @@ end
 
 HOST_OS   = detect_host_os
 HOST_ARCH = detect_host_arch
-LAB_ARCH  = ENV.fetch('LAB_ARCH', HOST_ARCH)
 
+# Native-arch only. Guests run on the host's CPU — no emulation.
 PROVIDER_MATRIX = {
-  %w[macos   x86_64 x86_64] => 'virtualbox',
-  %w[macos   arm64  arm64]  => 'parallels',
-  %w[macos   arm64  x86_64] => 'qemu',
-  %w[linux   x86_64 x86_64] => 'libvirt',
-  %w[linux   arm64  arm64]  => 'libvirt',
-  %w[linux   arm64  x86_64] => 'libvirt',
-  %w[windows x86_64 x86_64] => 'virtualbox',
+  %w[macos   x86_64] => 'virtualbox',
+  %w[macos   arm64]  => 'parallels',
+  %w[linux   x86_64] => 'libvirt',
+  %w[linux   arm64]  => 'libvirt',
+  %w[windows x86_64] => 'virtualbox',
 }.freeze
 
 def detect_cli_provider
@@ -53,17 +51,16 @@ end
 cfg_default = settings.dig('providers', 'default').to_s.strip
 PROVIDER = detect_cli_provider ||
            ENV['LAB_PROVIDER'] ||
-           (cfg_default.empty? ? PROVIDER_MATRIX[[HOST_OS, HOST_ARCH, LAB_ARCH]] : cfg_default)
+           (cfg_default.empty? ? PROVIDER_MATRIX[[HOST_OS, HOST_ARCH]] : cfg_default)
 
 if PROVIDER.nil? || PROVIDER.empty?
-  abort "RHCE-LAB: no provider matches host=#{HOST_OS}/#{HOST_ARCH} lab_arch=#{LAB_ARCH}.\n" \
-        "Set LAB_PROVIDER or providers.default in config.yaml."
+  abort "RHCE-LAB: no provider matches host=#{HOST_OS}/#{HOST_ARCH}.\n" \
+        "Set LAB_PROVIDER, providers.default, or 'vagrant up --provider X'."
 end
 
-BOX_ARCH = (LAB_ARCH == 'x86_64') ? 'amd64' : 'arm64'
+BOX_ARCH = (HOST_ARCH == 'x86_64') ? 'amd64' : 'arm64'
 
-puts "==> RHCE-LAB: host=#{HOST_OS}/#{HOST_ARCH} lab_arch=#{LAB_ARCH} " \
-     "provider=#{PROVIDER} box_arch=#{BOX_ARCH}"
+puts "==> RHCE-LAB: host=#{HOST_OS}/#{HOST_ARCH} provider=#{PROVIDER} box_arch=#{BOX_ARCH}"
 
 # -----------------------------------------------------------------------------
 # Config constants
@@ -83,7 +80,6 @@ NODE_BASE  = node_cfg['base_ip']
 REPO_IP    = repo_cfg['ip']
 CTRL_IP    = ctrl_cfg['ip']
 SUBNET_CIDR = "#{NET}.0/24"
-GATEWAY     = "#{NET}.1"
 
 def node_ip(i)
   "#{NET}.#{NODE_BASE + i - 1}"
@@ -114,12 +110,7 @@ HOST_ARGS << CTRL_IP << 'ansible-control'
 # Provider helpers
 # -----------------------------------------------------------------------------
 
-QEMU_CFG = settings.dig('providers', 'qemu') || {}
-
-def lab_apply_basics(m, vm_cfg, vm_name, vm_index)
-  # vm_index: 0=repo, 1=control, 2..6=node1..5. Used by the qemu provider
-  # to assign a unique SSH host-forward port and a deterministic MAC on the
-  # socket_vmnet lab interface.
+def lab_apply_basics(m, vm_cfg, vm_name)
   case PROVIDER
   when 'virtualbox'
     m.vm.provider 'virtualbox' do |vb|
@@ -131,22 +122,10 @@ def lab_apply_basics(m, vm_cfg, vm_name, vm_index)
     end
   when 'libvirt'
     m.vm.provider 'libvirt' do |lv|
-      lv.memory = vm_cfg['memory']
-      lv.cpus   = vm_cfg['cpus']
-      if LAB_ARCH == HOST_ARCH
-        lv.driver = 'kvm'
-        lv.cpu_mode = 'host-passthrough' if LAB_ARCH == 'arm64'
-      else
-        # Cross-arch TCG emulation under libvirt.
-        lv.driver        = 'qemu'
-        lv.machine_arch  = LAB_ARCH
-        lv.machine_type  = (LAB_ARCH == 'x86_64') ? 'pc' : 'virt'
-        lv.emulator_path = (LAB_ARCH == 'x86_64') ?
-                             '/usr/bin/qemu-system-x86_64' :
-                             '/usr/bin/qemu-system-aarch64'
-        lv.cpu_mode      = 'custom'
-        lv.cpu_model     = (LAB_ARCH == 'x86_64') ? 'qemu64' : 'cortex-a72'
-      end
+      lv.memory   = vm_cfg['memory']
+      lv.cpus     = vm_cfg['cpus']
+      lv.driver   = 'kvm'
+      lv.cpu_mode = 'host-passthrough' if HOST_ARCH == 'arm64'
     end
   when 'parallels'
     m.vm.provider 'parallels' do |prl|
@@ -160,55 +139,12 @@ def lab_apply_basics(m, vm_cfg, vm_name, vm_index)
       v.vmx['memsize']     = vm_cfg['memory'].to_s
       v.vmx['numvcpus']    = vm_cfg['cpus'].to_s
     end
-  when 'qemu'
-    qemu_bin = (LAB_ARCH == 'x86_64') ?
-      QEMU_CFG['qemu_system_x86_64'] :
-      QEMU_CFG['qemu_system_aarch64']
-    # vagrant-qemu defaults every VM to forwarding guest 22 -> host 50022,
-    # which collides across VMs. Assign a unique host port per index.
-    ssh_port = 50022 + vm_index
-    # Deterministic MAC on the socket_vmnet lab segment. Last octet = 0x40+index
-    # so VMs are easy to identify (repo=:40, control=:41, node1..5=:42..:46).
-    lab_mac  = "52:54:00:00:00:%02x" % (0x40 + vm_index)
-    # TCG-emulated boot can be very slow; bump SSH wait window.
-    m.vm.boot_timeout = 1200 if PROVIDER == 'qemu' && LAB_ARCH != HOST_ARCH
-    m.vm.provider 'qemu' do |qe|
-      qe.memory   = "#{vm_cfg['memory']}M"
-      qe.smp      = vm_cfg['cpus'].to_s
-      qe.ssh_port = ssh_port
-      if LAB_ARCH == 'x86_64'
-        qe.arch    = 'x86_64'
-        qe.machine = 'q35'
-        qe.cpu     = 'qemu64'
-      else
-        qe.arch    = 'aarch64'
-        qe.machine = 'virt,accel=hvf,highmem=off'
-        qe.cpu     = 'cortex-a72'
-      end
-      qe.net_device = 'virtio-net-pci'
-      # Wrap qemu through socket_vmnet_client. The wrapper opens the vmnet
-      # socket on fd 3 and exec()s qemu — qemu still has to be told to use
-      # that fd, which is what the extra_qemu_args below do.
-      qe.qemu_bin = [
-        QEMU_CFG['socket_vmnet_client'],
-        QEMU_CFG['socket_vmnet_socket'],
-        qemu_bin
-      ]
-      existing = qe.extra_qemu_args
-      existing = [] unless existing.is_a?(Array)
-      qe.extra_qemu_args = existing + [
-        '-netdev', 'socket,fd=3,id=netvmnet',
-        '-device', "virtio-net-pci,netdev=netvmnet,mac=#{lab_mac}"
-      ]
-    end
   else
     abort "RHCE-LAB: unsupported provider '#{PROVIDER}'"
   end
 end
 
 def lab_private_network(m, ip)
-  # qemu uses socket_vmnet + the in-guest configure-static-ip.sh helper.
-  return if PROVIDER == 'qemu'
   m.vm.network 'private_network', ip: ip, netmask: MASK
 end
 
@@ -224,25 +160,6 @@ def lab_attach_extra_disk(m, vm_name, idx, size_gb)
     m.vm.provider 'parallels' do |prl|
       prl.customize 'post-import',
         ['set', :id, '--device-add', 'hdd', '--size', "#{size_gb * 1024}"]
-    end
-  when 'qemu'
-    disk_dir  = File.join(ROOT, 'disks')
-    disk_file = File.join(disk_dir, "#{vm_name}-extra#{idx}.qcow2")
-    m.trigger.before :up do |t|
-      t.run = { inline: <<~SH }
-        mkdir -p '#{disk_dir}'
-        [ -f '#{disk_file}' ] || qemu-img create -f qcow2 '#{disk_file}' #{size_gb}G
-      SH
-    end
-    m.vm.provider 'qemu' do |qe|
-      # vagrant-qemu initialises extra_qemu_args to its UNSET_VALUE sentinel
-      # (a Symbol), so `|| []` does not fall back. Coerce explicitly.
-      existing = qe.extra_qemu_args
-      existing = [] unless existing.is_a?(Array)
-      qe.extra_qemu_args = existing + [
-        '-drive', "file=#{disk_file},if=none,id=extra#{idx},format=qcow2",
-        '-device', "virtio-blk-pci,drive=extra#{idx},serial=extra#{idx}"
-      ]
     end
   end
 end
@@ -261,14 +178,6 @@ def lab_attach_iso(m, iso_path)
       prl.customize ['set', :id, '--device-set', 'cdrom0',
                      '--image', iso_path, '--connect']
     end
-  when 'qemu'
-    m.vm.provider 'qemu' do |qe|
-      existing = qe.extra_qemu_args
-      existing = [] unless existing.is_a?(Array)
-      qe.extra_qemu_args = existing + [
-        '-drive', "file=#{iso_path},media=cdrom,readonly=on"
-      ]
-    end
   end
 end
 
@@ -281,20 +190,17 @@ Vagrant.configure('2') do |config|
   config.vm.box_architecture = BOX_ARCH
   config.vm.box_check_update = false
 
-  # The default synced folder is unreliable across providers (qemu can't do
-  # it cleanly; libvirt/parallels would mount via NFS/9p). The lab does not
-  # depend on it — the repo server's NFS export carries everything needed.
+  # The default synced folder is unreliable across providers (libvirt/parallels
+  # would mount via NFS/9p with extra requirements). The lab does not depend on
+  # it — the repo server's NFS export carries everything needed.
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   # ---------------- REPO SERVER ----------------
   config.vm.define 'repo' do |m|
     m.vm.hostname = repo_cfg['hostname']
-    lab_apply_basics(m, repo_cfg, 'rhce-repo-server', 0)
+    lab_apply_basics(m, repo_cfg, 'rhce-repo-server')
     lab_private_network(m, REPO_IP)
     lab_attach_iso(m, ISO)
-    m.vm.provision 'shell',
-                   path: 'scripts/common/configure-static-ip.sh',
-                   args: [REPO_IP, GATEWAY, SUBNET_CIDR, PROVIDER]
     m.vm.provision 'shell', path: 'scripts/common/base-setup.sh'
     m.vm.provision 'shell', path: 'scripts/common/create-users.sh'
     m.vm.provision 'shell', path: 'scripts/repo-server/setup-repos.sh'
@@ -306,7 +212,7 @@ Vagrant.configure('2') do |config|
   # ---------------- CONTROL NODE ----------------
   config.vm.define 'control' do |m|
     m.vm.hostname = ctrl_cfg['hostname']
-    lab_apply_basics(m, ctrl_cfg, 'rhce-ansible-control', 1)
+    lab_apply_basics(m, ctrl_cfg, 'rhce-ansible-control')
     lab_private_network(m, CTRL_IP)
     m.vm.provision 'file', source: "files/keys/#{KEY_NAME}",
                    destination: '/tmp/RH294-LAB'
@@ -314,9 +220,6 @@ Vagrant.configure('2') do |config|
                    destination: '/tmp/RH294-LAB.pub'
     m.vm.provision 'file', source: 'files/vimrc',
                    destination: '/tmp/vimrc'
-    m.vm.provision 'shell',
-                   path: 'scripts/common/configure-static-ip.sh',
-                   args: [CTRL_IP, GATEWAY, SUBNET_CIDR, PROVIDER]
     m.vm.provision 'shell', path: 'scripts/common/base-setup.sh'
     m.vm.provision 'shell', path: 'scripts/common/create-users.sh'
     m.vm.provision 'shell', path: 'scripts/control/setup-control.sh',
@@ -327,16 +230,13 @@ Vagrant.configure('2') do |config|
   (1..NODE_COUNT).each do |i|
     config.vm.define "node#{i}" do |m|
       m.vm.hostname = "node#{i}"
-      lab_apply_basics(m, node_cfg, "rhce-node#{i}", 1 + i)
+      lab_apply_basics(m, node_cfg, "rhce-node#{i}")
       lab_private_network(m, node_ip(i))
       node_cfg['extra_disks'].each_with_index do |disk, idx|
         lab_attach_extra_disk(m, "node#{i}", idx + 1, disk['size'])
       end
       m.vm.provision 'file', source: "files/keys/#{KEY_NAME}.pub",
                      destination: '/tmp/RH294-LAB.pub'
-      m.vm.provision 'shell',
-                     path: 'scripts/common/configure-static-ip.sh',
-                     args: [node_ip(i), GATEWAY, SUBNET_CIDR, PROVIDER]
       m.vm.provision 'shell', path: 'scripts/common/base-setup.sh'
       m.vm.provision 'shell', path: 'scripts/common/create-users.sh'
       m.vm.provision 'shell', path: 'scripts/node/setup-node.sh',
