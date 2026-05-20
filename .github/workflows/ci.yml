@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    name: shellcheck (provisioner scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          severity: warning
+          scandir: scripts
+
+  ruby-syntax:
+    name: ruby -c Vagrantfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: ruby -c Vagrantfile
+
+  yaml-lint:
+    name: yamllint (config.yaml + workflows)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install yamllint
+      - name: Write a relaxed yamllint config
+        run: |
+          cat > .yamllint <<'EOF'
+          extends: relaxed
+          rules:
+            line-length: disable
+            truthy: disable
+            indentation:
+              indent-sequences: consistent
+          EOF
+      - name: Lint config.yaml
+        run: yamllint config.yaml
+      - name: Lint workflow files
+        run: yamllint .github/workflows/
+
+  markdown-links:
+    name: markdown internal links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check internal markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress 'README.md' 'docs/**/*.md'
+          fail: true

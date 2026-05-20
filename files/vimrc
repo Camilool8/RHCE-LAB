@@ -1,0 +1,28 @@
+" RHCE-LAB Vim configuration for Ansible playbook editing
+let mapleader = " "
+
+nmap <leader>w :w<CR>
+nmap <leader>wq :wq<CR>
+nmap <leader>q :q<CR>
+nmap <leader>Q :q!<CR>
+
+set cuc
+set cul
+set nu
+set ai
+
+set et
+set sw=2
+set ts=2
+set sts=2
+
+set fdm=indent
+set fdl=99
+set hls
+set ic
+set is
+
+syntax on
+
+" <Space>K shows ansible-doc for the module under the cursor in a vsplit
+nnoremap <leader>K :set splitright<CR>:vnew<CR>:setlocal buftype=nofile<CR>:r! ansible-doc <C-R><C-W><CR>
