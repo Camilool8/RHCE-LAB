@@ -32,7 +32,7 @@ come back here when you can run `vagrant --version` and your hypervisor command
 ## Step 2 — Get the lab files
 
 ```bash
-git clone <repo-url> RHCE-LAB
+git clone https://github.com/Camilool8/RHCE-LAB.git
 cd RHCE-LAB
 ```
 
