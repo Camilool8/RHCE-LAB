@@ -5,7 +5,7 @@ The Vagrantfile picks a provider via this precedence chain:
 1. `vagrant up --provider <name>` (CLI flag — wins over everything else)
 2. `LAB_PROVIDER=<name>` environment variable
 3. `providers.default` in [`config.yaml`](config-yaml.md)
-4. Auto-detect from host OS + architecture (see [Provider matrix](provider-matrix.md))
+4. Probe for installed hypervisors and pick the first one present (see [Provider matrix](provider-matrix.md))
 
 ## `LAB_PROVIDER`
 

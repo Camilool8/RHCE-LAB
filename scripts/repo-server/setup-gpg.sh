@@ -1,17 +1,22 @@
 #!/bin/bash
-# Repo server: publish the AlmaLinux GPG key over HTTP.
-# (The key also already exists on every AlmaLinux node at the path
-#  task 2 expects: /etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9.)
+# Usage: setup-gpg.sh
 set -euo pipefail
 
-echo "=== Repo server: publish GPG key ==="
+echo "=== Repo server: publish distribution GPG key ==="
 
-KEY=/etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9
-if [ -f "$KEY" ]; then
-  cp "$KEY" /var/www/html/repo/RPM-GPG-KEY-AlmaLinux-9
-  echo "Published $KEY -> /repo/RPM-GPG-KEY-AlmaLinux-9"
-else
-  echo "WARN: $KEY not found on repo server"
+WEBROOT=/var/www/html/repo
+GPG_DIR=/etc/pki/rpm-gpg
+
+published=0
+for key in "$GPG_DIR"/RPM-GPG-KEY-*; do
+  [ -f "$key" ] || continue
+  cp "$key" "$WEBROOT/$(basename "$key")"
+  echo "Published $key -> /repo/$(basename "$key")"
+  published=$((published + 1))
+done
+
+if [ "$published" -eq 0 ]; then
+  echo "WARN: no GPG key found in $GPG_DIR; tasks that reference a key URL may fail"
 fi
 
 echo "=== GPG key step complete ==="

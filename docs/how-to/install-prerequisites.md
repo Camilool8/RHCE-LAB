@@ -41,13 +41,9 @@ hypervisors:
    sudo "/Applications/VMware Fusion.app/Contents/Library/vmnet-cli" --start
    ```
 
-6. Tell the lab to use this provider:
-
-   ```bash
-   export LAB_PROVIDER=vmware_desktop
-   ```
-
-   To make this permanent, add the line to `~/.zshrc` (or `~/.bashrc`).
+6. That's it — the Vagrantfile auto-detects VMware Fusion. **You do not
+   need `LAB_PROVIDER=vmware_desktop`** unless you have both Parallels and
+   Fusion installed and want Fusion to win.
 
 ### Option B — Parallels Desktop (paid)
 

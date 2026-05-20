@@ -6,13 +6,22 @@ The Vagrantfile picks a provider based on the host OS and CPU architecture
 
 ## Auto-selected provider
 
-| Host OS | Host arch | Provider |
-|---|---|---|
-| macOS Intel | `x86_64` | `virtualbox` |
-| macOS Apple Silicon | `arm64` | `parallels` |
-| Linux | `x86_64` | `libvirt` |
-| Linux | `arm64` | `libvirt` |
-| Windows | `x86_64` | `virtualbox` |
+The Vagrantfile **probes for installed hypervisors** before falling back to
+a per-host default. You only need to set `LAB_PROVIDER` (or
+`providers.default` in `config.yaml`) if the auto-detected provider is not
+the one you want to use.
+
+| Host OS | Host arch | First choice if installed | Fallback if first not present | Final fallback |
+|---|---|---|---|---|
+| macOS Intel | `x86_64` | VirtualBox (`/Applications/VirtualBox.app`) | VMware Fusion (`/Applications/VMware Fusion.app`) | `virtualbox` |
+| macOS Apple Silicon | `arm64` | Parallels (`/Applications/Parallels Desktop.app`) | VMware Fusion (`/Applications/VMware Fusion.app`) | `parallels` |
+| Linux | `x86_64` / `arm64` | libvirt (`virsh` in PATH) | VirtualBox (`VBoxManage` in PATH) | `libvirt` |
+| Windows | `x86_64` | VirtualBox | — | `virtualbox` |
+
+So, for example: a fresh Apple Silicon Mac with **only** VMware Fusion installed
+will auto-select `vmware_desktop` — no env var needed. The same Mac with
+Parallels installed will pick `parallels`. With both installed, Parallels
+wins (paid, native acceleration is the preferred choice on arm64).
 
 ## Required plugins by provider
 

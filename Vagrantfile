@@ -7,10 +7,6 @@ require 'rbconfig'
 ROOT     = File.dirname(__FILE__)
 settings = YAML.load_file(File.join(ROOT, 'config.yaml'))
 
-# -----------------------------------------------------------------------------
-# Host + provider detection (native-arch only — guests match host arch)
-# -----------------------------------------------------------------------------
-
 def detect_host_os
   case RbConfig::CONFIG['host_os']
   when /darwin/             then 'macos'
@@ -31,14 +27,32 @@ end
 HOST_OS   = detect_host_os
 HOST_ARCH = detect_host_arch
 
-# Native-arch only. Guests run on the host's CPU — no emulation.
-PROVIDER_MATRIX = {
-  %w[macos   x86_64] => 'virtualbox',
-  %w[macos   arm64]  => 'parallels',
-  %w[linux   x86_64] => 'libvirt',
-  %w[linux   arm64]  => 'libvirt',
-  %w[windows x86_64] => 'virtualbox',
-}.freeze
+def installed_macos_app?(path)
+  File.exist?("/Applications/#{path}")
+end
+
+def installed_linux_binary?(name)
+  ENV['PATH'].to_s.split(File::PATH_SEPARATOR).any? { |d| File.executable?(File.join(d, name)) }
+end
+
+def detect_installed_provider
+  case [HOST_OS, HOST_ARCH]
+  when %w[macos x86_64]
+    return 'virtualbox'     if installed_macos_app?('VirtualBox.app')
+    return 'vmware_desktop' if installed_macos_app?('VMware Fusion.app')
+    'virtualbox'
+  when %w[macos arm64]
+    return 'parallels'      if installed_macos_app?('Parallels Desktop.app')
+    return 'vmware_desktop' if installed_macos_app?('VMware Fusion.app')
+    'parallels'
+  when %w[linux x86_64], %w[linux arm64]
+    return 'libvirt'        if installed_linux_binary?('virsh')
+    return 'virtualbox'     if installed_linux_binary?('VBoxManage')
+    'libvirt'
+  when %w[windows x86_64]
+    'virtualbox'
+  end
+end
 
 def detect_cli_provider
   i = ARGV.index { |a| a == '--provider' || a.start_with?('--provider=') }
@@ -51,7 +65,7 @@ end
 cfg_default = settings.dig('providers', 'default').to_s.strip
 PROVIDER = detect_cli_provider ||
            ENV['LAB_PROVIDER'] ||
-           (cfg_default.empty? ? PROVIDER_MATRIX[[HOST_OS, HOST_ARCH]] : cfg_default)
+           (cfg_default.empty? ? detect_installed_provider : cfg_default)
 
 if PROVIDER.nil? || PROVIDER.empty?
   abort "RHCE-LAB: no provider matches host=#{HOST_OS}/#{HOST_ARCH}.\n" \
@@ -62,10 +76,6 @@ BOX_ARCH = (HOST_ARCH == 'x86_64') ? 'amd64' : 'arm64'
 
 puts "==> RHCE-LAB: host=#{HOST_OS}/#{HOST_ARCH} provider=#{PROVIDER} box_arch=#{BOX_ARCH}"
 
-# -----------------------------------------------------------------------------
-# Config constants
-# -----------------------------------------------------------------------------
-
 NET   = settings['network']['subnet']
 MASK  = settings['network']['netmask']
 BOX   = settings['box']['name']
@@ -75,19 +85,15 @@ repo_cfg = settings['vms']['repo_server']
 ctrl_cfg = settings['vms']['control']
 node_cfg = settings['vms']['nodes']
 
-NODE_COUNT = node_cfg['count']
-NODE_BASE  = node_cfg['base_ip']
-REPO_IP    = repo_cfg['ip']
-CTRL_IP    = ctrl_cfg['ip']
+NODE_COUNT  = node_cfg['count']
+NODE_BASE   = node_cfg['base_ip']
+REPO_IP     = repo_cfg['ip']
+CTRL_IP     = ctrl_cfg['ip']
 SUBNET_CIDR = "#{NET}.0/24"
 
 def node_ip(i)
   "#{NET}.#{NODE_BASE + i - 1}"
 end
-
-# -----------------------------------------------------------------------------
-# RH294-LAB key generation (host-side, once)
-# -----------------------------------------------------------------------------
 
 KEY_NAME = settings['lab']['ssh_key_name']
 KEY_DIR  = File.join(ROOT, 'files', 'keys')
@@ -97,18 +103,10 @@ unless File.exist?(KEY_PRIV)
   system("ssh-keygen -t rsa -b 2048 -N '' -C '#{KEY_NAME}' -f '#{KEY_PRIV}'")
 end
 
-# -----------------------------------------------------------------------------
-# /etc/hosts args for the control node (repeated "<ip> <hostname>" pairs)
-# -----------------------------------------------------------------------------
-
 HOST_ARGS = []
 HOST_ARGS << REPO_IP << 'repo-server'
 HOST_ARGS << CTRL_IP << 'ansible-control'
 (1..NODE_COUNT).each { |i| HOST_ARGS << node_ip(i) << "node#{i}" }
-
-# -----------------------------------------------------------------------------
-# Provider helpers
-# -----------------------------------------------------------------------------
 
 def lab_apply_basics(m, vm_cfg, vm_name)
   case PROVIDER
@@ -145,12 +143,6 @@ def lab_apply_basics(m, vm_cfg, vm_name)
 end
 
 def lab_private_network(m, ip)
-  # auto_config: false — Vagrant's RedHat guest capability writes obsolete
-  # /etc/sysconfig/network-scripts/ifcfg-* files which AlmaLinux 9.6+ no longer
-  # reads (HashiCorp Vagrant issue #13744). The Vagrantfile still asks the
-  # provider to create the private vmnet/host-only network and attach a NIC
-  # to it; the in-guest IP assignment is done by configure-lab-network.sh
-  # via NetworkManager keyfile, which is portable across all four providers.
   m.vm.network 'private_network', ip: ip, netmask: MASK, auto_config: false
 end
 
@@ -168,15 +160,6 @@ def lab_attach_extra_disk(m, vm_name, idx, size_gb)
         ['set', :id, '--device-add', 'hdd', '--size', "#{size_gb * 1024}"]
     end
   when 'vmware_desktop'
-    # Broadcom (Apple Silicon Fusion KB 315602) recommends NVMe for all
-    # guests — SCSI is explicitly NOT recommended. The plugin's high-level
-    # disk DSL takes provider-specific keys by passing them with the provider
-    # name as the hash key (see Vagrant's plugins/kernel_v2/config/vm.rb:disk
-    # which routes any Hash-valued option through add_provider_config; the
-    # plugin then reads disk.provider_config[:vmware_desktop][:bus_type] from
-    # lib/vagrant-vmware-desktop/cap/disk.rb). Wrapping under provider_config:
-    # is wrong — Vagrant treats provider_config as the provider's own name
-    # and never reaches our value.
     m.vm.disk :disk,
               name:    "#{vm_name}-extra#{idx}",
               size:    "#{size_gb}GB",
@@ -202,21 +185,13 @@ def lab_attach_iso(m, iso_path)
   end
 end
 
-# -----------------------------------------------------------------------------
-# Vagrant configuration
-# -----------------------------------------------------------------------------
-
 Vagrant.configure('2') do |config|
   config.vm.box              = BOX
   config.vm.box_architecture = BOX_ARCH
   config.vm.box_check_update = false
 
-  # The default synced folder is unreliable across providers (libvirt/parallels
-  # would mount via NFS/9p with extra requirements). The lab does not depend on
-  # it — the repo server's NFS export carries everything needed.
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
-  # ---------------- REPO SERVER ----------------
   config.vm.define 'repo' do |m|
     m.vm.hostname = repo_cfg['hostname']
     lab_apply_basics(m, repo_cfg, 'rhce-repo-server')
@@ -233,7 +208,6 @@ Vagrant.configure('2') do |config|
                    args: [SUBNET_CIDR]
   end
 
-  # ---------------- CONTROL NODE ----------------
   config.vm.define 'control' do |m|
     m.vm.hostname = ctrl_cfg['hostname']
     lab_apply_basics(m, ctrl_cfg, 'rhce-ansible-control')
@@ -253,7 +227,6 @@ Vagrant.configure('2') do |config|
                    args: HOST_ARGS
   end
 
-  # ---------------- MANAGED NODES ----------------
   (1..NODE_COUNT).each do |i|
     config.vm.define "node#{i}" do |m|
       m.vm.hostname = "node#{i}"
