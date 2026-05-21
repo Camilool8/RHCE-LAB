@@ -18,8 +18,8 @@ end
 
 def detect_host_arch
   case RbConfig::CONFIG['host_cpu']
-  when 'x86_64', 'amd64'  then 'x86_64'
-  when 'arm64', 'aarch64' then 'arm64'
+  when 'x86_64', 'amd64', 'x64' then 'x86_64' # Vagrant's Ruby on Windows reports x64
+  when 'arm64', 'aarch64'       then 'arm64'
   else RbConfig::CONFIG['host_cpu']
   end
 end
