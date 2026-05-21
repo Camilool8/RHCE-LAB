@@ -15,8 +15,8 @@ the one you want to use.
 | ------------------- | ------------------ | ------------------------------------------------- | ------------------------------------------------- | -------------- |
 | macOS Intel         | `x86_64`           | VirtualBox (`/Applications/VirtualBox.app`)       | VMware Fusion (`/Applications/VMware Fusion.app`) | `virtualbox`   |
 | macOS Apple Silicon | `arm64`            | Parallels (`/Applications/Parallels Desktop.app`) | VMware Fusion (`/Applications/VMware Fusion.app`) | `parallels`    |
-| Linux               | `x86_64` / `arm64` | libvirt (`virsh` in PATH)                         | VirtualBox (`VBoxManage` in PATH)                 | `libvirt`      |
-| Windows             | `x86_64`           | VirtualBox                                        | —                                                 | `virtualbox`   |
+| Linux               | `x86_64` / `arm64` | libvirt (`virsh` in PATH)                         | VirtualBox (`VBoxManage` on PATH or standard install dirs) | `libvirt`      |
+| Windows             | `x86_64`           | VirtualBox (`VBoxManage.exe` on PATH or under `Program Files\Oracle\VirtualBox`) | —                                    | `virtualbox`   |
 
 So, for example: a fresh Apple Silicon Mac with **only** VMware Fusion installed
 will auto-select `vmware_desktop` — no env var needed. The same Mac with

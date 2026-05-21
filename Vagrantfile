@@ -35,10 +35,110 @@ def installed_linux_binary?(name)
   ENV['PATH'].to_s.split(File::PATH_SEPARATOR).any? { |d| File.executable?(File.join(d, name)) }
 end
 
+def wsl?
+  return false unless HOST_OS == 'linux'
+
+  !ENV['WSL_DISTRO_NAME'].to_s.empty? ||
+    (File.readable?('/proc/version') && File.read('/proc/version').include?('Microsoft'))
+rescue StandardError
+  false
+end
+
+def vboxmanage_binary_name
+  (HOST_OS == 'windows' || wsl?) ? 'VBoxManage.exe' : 'VBoxManage'
+end
+
+def executable_at?(path)
+  return false if path.nil? || path.to_s.strip.empty?
+  return false unless File.exist?(path)
+
+  return true if path =~ /\.exe\z/i
+  File.executable?(path)
+end
+
+def vboxmanage_candidate_paths
+  name = vboxmanage_binary_name
+  paths = []
+
+  ENV['PATH'].to_s.split(File::PATH_SEPARATOR).each do |d|
+    next if d.nil? || d.strip.empty?
+
+    paths << File.join(d.strip, name)
+  end
+
+  env_sep = HOST_OS == 'windows' ? ';' : File::PATH_SEPARATOR
+  [ENV['VBOX_INSTALL_PATH'], ENV['VBOX_MSI_INSTALL_PATH']].each do |base|
+    next if base.nil? || base.to_s.strip.empty?
+
+    base.to_s.split(env_sep).each do |b|
+      b = b.strip
+      next if b.empty?
+
+      paths << File.join(b, name)
+    end
+  end
+
+  case HOST_OS
+  when 'windows'
+    drive = ENV['SYSTEMDRIVE'] || 'C:'
+    pf    = ENV['ProgramFiles']
+    pf86  = ENV['ProgramFiles(x86)']
+    [
+      File.join(drive, 'Program Files', 'Oracle', 'VirtualBox', name),
+      File.join(drive, 'Program Files (x86)', 'Oracle', 'VirtualBox', name),
+      (pf && !pf.empty? ? File.join(pf, 'Oracle', 'VirtualBox', name) : nil),
+      (pf86 && !pf86.empty? ? File.join(pf86, 'Oracle', 'VirtualBox', name) : nil)
+    ].compact.each { |p| paths << p }
+  when 'linux'
+    if wsl?
+      [
+        File.join('/mnt/c', 'Program Files', 'Oracle', 'VirtualBox', name),
+        File.join('/mnt/c', 'Program Files (x86)', 'Oracle', 'VirtualBox', name)
+      ].each { |p| paths << p }
+    else
+      ['/usr/bin', '/usr/local/bin', '/opt/VirtualBox'].each do |d|
+        paths << File.join(d, name)
+      end
+    end
+  when 'macos'
+    paths << File.join('/Applications/VirtualBox.app/Contents/MacOS', name)
+  end
+
+  paths.uniq
+end
+
+def find_vboxmanage
+  vboxmanage_candidate_paths.find { |p| executable_at?(p) }
+end
+
+def virtualbox_installed?
+  return true if HOST_OS == 'macos' && installed_macos_app?('VirtualBox.app')
+
+  !find_vboxmanage.nil?
+end
+
+def configure_vboxmanage_env!
+  path = find_vboxmanage
+  return unless path
+
+  dir = File.dirname(path)
+  sep = File::PATH_SEPARATOR
+  expanded_dir = File.expand_path(dir)
+
+  unless ENV['PATH'].to_s.split(sep).any? { |d| (File.expand_path(d) rescue d) == expanded_dir }
+    ENV['PATH'] = "#{dir}#{sep}#{ENV['PATH']}"
+  end
+
+  ENV['VBOX_INSTALL_PATH'] ||= dir
+  ENV['VBOX_MSI_INSTALL_PATH'] ||= dir if HOST_OS == 'windows'
+end
+
+configure_vboxmanage_env!
+
 def detect_installed_provider
   case [HOST_OS, HOST_ARCH]
   when %w[macos x86_64]
-    return 'virtualbox'     if installed_macos_app?('VirtualBox.app')
+    return 'virtualbox'     if virtualbox_installed?
     return 'vmware_desktop' if installed_macos_app?('VMware Fusion.app')
     'virtualbox'
   when %w[macos arm64]
@@ -47,7 +147,7 @@ def detect_installed_provider
     'parallels'
   when %w[linux x86_64], %w[linux arm64]
     return 'libvirt'        if installed_linux_binary?('virsh')
-    return 'virtualbox'     if installed_linux_binary?('VBoxManage')
+    return 'virtualbox'     if virtualbox_installed?
     'libvirt'
   when %w[windows x86_64]
     'virtualbox'
