@@ -14,6 +14,12 @@
 
 set -o pipefail
 
+# Non-interactive verify runs do not source profile.d; match setup-control.sh on aarch64.
+if [ "$(uname -m)" = 'aarch64' ]; then
+  PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH}"
+  export PATH
+fi
+
 ANSIBLE_DIR="${ANSIBLE_DIR:-/home/student/ansible}"
 SSH_KEY="${SSH_KEY:-/home/student/.ssh/RH294-LAB}"
 SSH_USER="${SSH_USER:-student}"

@@ -106,4 +106,23 @@ chown student:student /home/student/.ansible-navigator.yml
 runuser -l student -c "podman pull '$EE_IMAGE'" 2>&1 | tail -3 \
   || echo "WARN: EE image pull failed — ansible-navigator --execution-environment false will still work"
 
+# aarch64: pip --user installs ansible under ~/.local/bin with a cryptography
+# wheel that can SIGILL in the lab VMs. Prefer the distro ansible-core first
+# (/usr/local/bin on some arm64 images, /usr/bin on others).
+if [ "$(uname -m)" = 'aarch64' ]; then
+  install -m 644 /dev/stdin /etc/profile.d/rhce-lab-ansible-path.sh <<'EOF'
+# RHCE-LAB: distro ansible before pip --user (aarch64 illegal-instruction)
+PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-/bin:/sbin}"
+export PATH
+EOF
+  touch /home/student/.bashrc
+  chown student:student /home/student/.bashrc
+  sed -i '/# RHCE-LAB ansible PATH BEGIN/,/# RHCE-LAB ansible PATH END/d' /home/student/.bashrc
+  {
+    echo '# RHCE-LAB ansible PATH BEGIN'
+    echo 'export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH}"'
+    echo '# RHCE-LAB ansible PATH END'
+  } >> /home/student/.bashrc
+fi
+
 echo "=== Control node setup complete ==="

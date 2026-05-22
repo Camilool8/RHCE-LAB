@@ -70,9 +70,10 @@ instructions not exposed by the lab's VMs. The resulting `ansible` binary
 runs `Illegal instruction (core dumped)` on first use. The lab does not
 attempt to "fix" this wheel — instead it documents the workaround
 ([Work around the pip-ansible "Illegal instruction" crash](../how-to/work-around-ansible-illegal-instruction.md))
-and recommends `/usr/bin/ansible` (from `dnf install ansible-core`) for
-regular ansible commands. `ansible-navigator` itself is fine because its
-real work runs inside the execution-environment container.
+and on **aarch64** control nodes prepends `/usr/local/bin` and `/usr/bin` to
+`student`'s `PATH` so `ansible` resolves to the distro `ansible-core` (from
+`dnf install ansible-core`) instead of the pip copy. `ansible-navigator` itself
+is fine because its real work runs inside the execution-environment container.
 
 ## EE image choice
 

@@ -134,12 +134,15 @@ EOF
 Run the ping:
 
 ```bash
-/usr/bin/ansible all -m ping
+ansible all -m ping
 ```
 
-You should see five `SUCCESS` lines, one per node. Use the explicit
-`/usr/bin/ansible` path — see [Work around the pip-ansible "Illegal instruction"
-crash](../how-to/work-around-ansible-illegal-instruction.md) for why.
+You should see five `SUCCESS` lines, one per node. On **aarch64** hosts the
+lab puts `/usr/local/bin` ahead of `~/.local/bin` in `PATH` so this hits the
+distro `ansible-core`; if you still see `Illegal instruction`, use
+`/usr/local/bin/ansible` or `/usr/bin/ansible` explicitly — see
+[Work around the pip-ansible "Illegal instruction"
+crash](../how-to/work-around-ansible-illegal-instruction.md).
 
 ## Step 6 — Take a clean baseline snapshot
 

@@ -42,9 +42,10 @@ dependency on the host:
 ansible-navigator run ~/ansible/task-01.yml --execution-environment false --mode stdout
 ```
 
-This uses the **host's** `ansible-core` (the one installed by `dnf`, at
-`/usr/bin/ansible`). It is the same engine that `ansible-playbook` uses, so
-the result is identical to running `ansible-playbook` directly.
+This uses the **host's** `ansible-core` (the one installed by `dnf` — on
+aarch64 often `/usr/local/bin/ansible`, otherwise `/usr/bin/ansible`). It is
+the same engine that `ansible-playbook` uses, so the result is identical to
+running `ansible-playbook` directly.
 
 ## Inspect the EE image
 
@@ -89,5 +90,5 @@ sudo loginctl enable-linger student
 
 ## Related
 
-- [Work around the pip-ansible "Illegal instruction" crash](work-around-ansible-illegal-instruction.md) — why we recommend EE mode or `/usr/bin/ansible`.
+- [Work around the pip-ansible "Illegal instruction" crash](work-around-ansible-illegal-instruction.md) — why we recommend EE mode or the distro `ansible` on `PATH`.
 - [Explanation: `ansible-navigator` install paths](../explanation/ansible-navigator-install.md).
