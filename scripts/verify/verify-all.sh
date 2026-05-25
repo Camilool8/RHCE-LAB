@@ -142,11 +142,15 @@ run_task_script() {
     print_score_detail
     task_footer "${TASK_NUM#0}" "$SCORE_POINTS" "$SCORE_MAX"
 
-    GRAND_POINTS=$((GRAND_POINTS + SCORE_POINTS))
+    # Cap earned points at TASK_POINTS so a task can never contribute more
+    # to the grand total than its declared weight (e.g. Task 16 has 46 pts
+    # of checks but is only worth 20 points).
+    local capped_points=$(( SCORE_POINTS < TASK_POINTS ? SCORE_POINTS : TASK_POINTS ))
+    GRAND_POINTS=$((GRAND_POINTS + capped_points))
     # Use TASK_POINTS as the authoritative max so totals stay stable
     # even if a verifier skipped some checks (e.g. host unreachable).
     GRAND_MAX=$((GRAND_MAX + TASK_POINTS))
-    RESULTS_LINES+=("$(printf 'Task %s: %3d / %3d   %s' "$TASK_NUM" "$SCORE_POINTS" "$TASK_POINTS" "$TASK_TITLE")")
+    RESULTS_LINES+=("$(printf 'Task %s: %3d / %3d   %s' "$TASK_NUM" "$capped_points" "$TASK_POINTS" "$TASK_TITLE")")
 }
 
 # ---- pass 1: apply + verify ----
@@ -179,9 +183,10 @@ if (( REBOOT )); then
             fi
             print_score_detail
             task_footer "${TASK_NUM#0}" "$SCORE_POINTS" "$SCORE_MAX"
-            GRAND_POINTS=$((GRAND_POINTS + SCORE_POINTS))
+            local capped_points=$(( SCORE_POINTS < TASK_POINTS ? SCORE_POINTS : TASK_POINTS ))
+            GRAND_POINTS=$((GRAND_POINTS + capped_points))
             GRAND_MAX=$((GRAND_MAX + TASK_POINTS))
-            RESULTS_LINES+=("$(printf 'Task %s: %3d / %3d   %s' "$TASK_NUM" "$SCORE_POINTS" "$TASK_POINTS" "$TASK_TITLE")")
+            RESULTS_LINES+=("$(printf 'Task %s: %3d / %3d   %s' "$TASK_NUM" "$capped_points" "$TASK_POINTS" "$TASK_TITLE")")
         done
     fi
 fi

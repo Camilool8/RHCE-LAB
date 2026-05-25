@@ -20,7 +20,6 @@ task_verify() {
     for node in "${ALL_NODES[@]}"; do
         score_check 2 "${node}: chrony.conf points at ${TIME_SERVER}" \
             node_sudo "$node" "grep -E '^(server|pool)\\s+${TIME_SERVER}' /etc/chrony.conf"
-        SCORE_MAX=$((SCORE_MAX - 2)); SCORE_MAX=$((SCORE_MAX + 2))  # noop; readability
     done
     # iburst presence (single check across nodes — chrony.conf is identical)
     score_check 2 "node1: server line has iburst" \

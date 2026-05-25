@@ -37,6 +37,13 @@ task_verify() {
         score_check 2 "${node}: RPM Development Tools group installed" \
             node_sudo "$node" "dnf group list --installed 2>/dev/null | grep -qi 'RPM Development Tools'"
     done
+
+    # Task part c: update all packages to latest on dev.
+    # Static check: playbook must use state: latest (1pt) with wildcard name: '*' (2pt).
+    score_check 1 "packages.yml uses state: latest (update task present)" \
+        grep -Eq 'state:\s*latest' "$ANSIBLE_DIR/packages.yml"
+    score_check 2 "packages.yml updates all packages (name: '*' wildcard)" \
+        grep -Eq "name:\s*['\"]?\*['\"]?" "$ANSIBLE_DIR/packages.yml"
 }
 
 task_reboot_survival() { task_verify; }

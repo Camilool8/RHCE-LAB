@@ -24,9 +24,7 @@ _node_repo_has_kv() {
 }
 
 task_verify() {
-    [[ -f "$ANSIBLE_DIR/yum-repo.yml" ]] && SCORE_POINTS=$((SCORE_POINTS + 1)) || true
-    SCORE_MAX=$((SCORE_MAX + 1))
-    SCORE_DETAIL+=("$( [[ -f $ANSIBLE_DIR/yum-repo.yml ]] && echo "${C_GRN}PASS${C_OFF} (+1) yum-repo.yml present" || echo "${C_RED}FAIL${C_OFF} ( 0/1) yum-repo.yml missing" )")
+    score_check 1 "yum-repo.yml exists" test -f "$ANSIBLE_DIR/yum-repo.yml"
 
     local node
     for node in "${ALL_NODES[@]}"; do

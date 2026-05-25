@@ -19,15 +19,18 @@ task_verify() {
         score_check 2 "${node}: LV 'research/data' exists" \
             node_sudo "$node" "lvs --noheadings research/data"
         # Size must be exactly 1200 MiB or fallback 800 MiB.
+        # awk uses END{exit !ok} so it fails (exit 1) when lvs produces no output
+        # (i.e. the LV does not exist yet), preventing a false-positive pass.
         score_check 2 "${node}: LV size is 1200m or 800m" \
             node_sudo "$node" \
             "lvs --noheadings --units m -o lv_size /dev/research/data 2>/dev/null \
-              | awk '{gsub(/m\$/,\"\",\$1); v=int(\$1+0.5); exit !(v==1200 || v==800)}'"
+              | awk 'BEGIN{ok=0} {gsub(/m\$/,\"\",\$1); v=int(\$1+0.5); if(v==1200||v==800) ok=1} END{exit !ok}'"
         score_check 2 "${node}: filesystem is ext4 on /dev/research/data" \
             node_sudo "$node" "blkid /dev/research/data | grep -qi 'TYPE=\"ext4\"'"
-        # MUST NOT be mounted, no fstab entry.
+        # MUST NOT be mounted, no fstab entry — but only award points if the LV
+        # actually exists; otherwise the check is trivially true and gives free points.
         score_check 1 "${node}: data LV is NOT mounted" \
-            node_sudo "$node" "! findmnt /dev/research/data && ! grep -qE '/dev/research/data|research-data' /etc/fstab"
+            node_sudo "$node" "lvs research/data >/dev/null 2>&1 && ! findmnt /dev/research/data && ! grep -qE '/dev/research/data|research-data' /etc/fstab"
     done
 }
 

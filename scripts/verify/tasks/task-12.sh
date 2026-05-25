@@ -18,12 +18,18 @@ task_verify() {
     local node
     for node in "${DEV_NODES[@]}"; do
         score_check 3 "${node} (dev): /etc/issue == Development"  _grep_issue "$node" "Development"
+        score_check 1 "${node} (dev): /etc/issue has exactly one line" \
+            node_sudo "$node" "[ \$(wc -l < /etc/issue) -eq 1 ]"
     done
     for node in "${TEST_NODES[@]}"; do
         score_check 3 "${node} (test): /etc/issue == Test"        _grep_issue "$node" "Test"
+        score_check 1 "${node} (test): /etc/issue has exactly one line" \
+            node_sudo "$node" "[ \$(wc -l < /etc/issue) -eq 1 ]"
     done
     for node in "${PROD_NODES[@]}"; do
         score_check 2 "${node} (prod): /etc/issue == Production"  _grep_issue "$node" "Production"
+        score_check 1 "${node} (prod): /etc/issue has exactly one line" \
+            node_sudo "$node" "[ \$(wc -l < /etc/issue) -eq 1 ]"
     done
 }
 

@@ -14,7 +14,8 @@ task_verify() {
     local role="$ANSIBLE_DIR/roles/apache"
     score_check 1 "roles/apache directory exists" test -d "$role"
     score_check 1 "apache-role.yml exists"        test -f "$ANSIBLE_DIR/apache-role.yml"
-    score_check 2 "role has tasks/main.yml"       test -f "$role/tasks/main.yml"
+    score_check 2 "role has tasks/main.yml"          test -f "$role/tasks/main.yml"
+    score_check 1 "role has handlers/main.yml"       test -f "$role/handlers/main.yml"
     score_check 2 "role has templates/index.html.j2" test -f "$role/templates/index.html.j2"
 
     # Template references both HOSTNAME and IPADDRESS facts (grep liberally for any
@@ -26,6 +27,7 @@ task_verify() {
     for node in "${WEB_NODES[@]}"; do
         score_check 2 "${node}: httpd active"               node_sudo "$node" "systemctl is-active httpd"
         score_check 1 "${node}: httpd enabled"              node_sudo "$node" "systemctl is-enabled httpd"
+        score_check 1 "${node}: firewalld active"           node_sudo "$node" "systemctl is-active firewalld"
         score_check 1 "${node}: firewalld http service permitted" \
             node_sudo "$node" "firewall-cmd --list-services --permanent | grep -qw http || firewall-cmd --list-services | grep -qw http"
         score_check 2 "${node}: GET /  contains hostname text" \
