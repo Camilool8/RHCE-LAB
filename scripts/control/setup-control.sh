@@ -35,6 +35,10 @@ if [ -d /tmp/verify ]; then
     rm -rf /home/student/verify
     cp -r /tmp/verify /home/student/verify
     chown -R student:student /home/student/verify
+    # Strip Windows CRLF (\r) before chmod — the file provisioner copies
+    # scripts verbatim from the Windows host, so \r survives the transfer
+    # and breaks the shebang and every set/command on Linux.
+    find /home/student/verify -name '*.sh' -exec sed -i 's/\r//' {} \;
     find /home/student/verify -name '*.sh' -exec chmod +x {} \;
 fi
 

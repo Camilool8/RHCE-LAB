@@ -27,7 +27,7 @@ task_verify() {
             node_sudo "$node" "blkid /dev/research/data | grep -qi 'TYPE=\"ext4\"'"
         # MUST NOT be mounted, no fstab entry.
         score_check 1 "${node}: data LV is NOT mounted" \
-            node_sudo "$node" "! findmnt /dev/research/data && ! grep -q '/dev/research/data\\|research-data' /etc/fstab"
+            node_sudo "$node" "! findmnt /dev/research/data && ! grep -qE '/dev/research/data|research-data' /etc/fstab"
     done
 }
 

@@ -1,0 +1,16 @@
+# Ensure shell scripts always have LF line endings in the working tree.
+# Without this, Windows checkouts produce CRLF scripts that fail with
+# "command not found: $'\r'" when uploaded to Linux VMs.
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Ruby / Vagrant config — LF only
+Vagrantfile text eol=lf
+*.rb        text eol=lf
+
+# YAML — LF only
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Everything else: let git auto-detect, normalise in the repo index to LF
+*      text=auto

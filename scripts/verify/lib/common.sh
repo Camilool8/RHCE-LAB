@@ -84,11 +84,15 @@ node_ssh() {
     local node="$1"; shift
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR -o ConnectTimeout=5 -o BatchMode=yes \
+        -o ServerAliveInterval=5 -o ServerAliveCountMax=2 \
         -i "$SSH_KEY" "${SSH_USER}@${node}" "$@"
 }
 node_sudo() {
+    # Pipe the command via stdin to avoid all shell-quoting issues.
+    # Wrapping commands in '...' breaks when they contain single quotes
+    # (the remote shell hangs waiting for the closing quote).
     local node="$1"; shift
-    node_ssh "$node" "sudo -n bash -lc '$*'"
+    printf '%s\n' "$*" | node_ssh "$node" "sudo -n bash -s"
 }
 nodes_each() {
     local cmd_func="$1"; shift
