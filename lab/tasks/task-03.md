@@ -1,5 +1,22 @@
-3. Create a playbook called /home/student/ansible/packages.yml that:
+# Task 3 — Install Packages
 
-    a) Installs the php and mariadb packages on hosts in the dev, test, and prod host groups only.
-    b) Installs the RPM Development Tools package group on hosts in the dev host group only.
-    c) Updates all packages to the latest version on hosts in the dev host group only.
+Create a playbook that installs packages on the appropriate host groups.
+
+**Playbook path:** `/home/student/ansible/packages.yml`
+
+## Requirements
+
+### a) Install `php` and `mariadb`
+
+- Target hosts: `dev`, `test`, and `prod` host groups.
+- Both packages must be installed on every host in those groups.
+
+### b) Install the RPM Development Tools package group
+
+- Target hosts: `dev` host group **only**.
+- Use the `@RPM Development Tools` package group syntax.
+
+### c) Update all packages to the latest version
+
+- Target hosts: `dev` host group **only**.
+- All installed packages must be updated.

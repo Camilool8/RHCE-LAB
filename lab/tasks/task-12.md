@@ -1,8 +1,21 @@
-12. Create a playbook called /home/student/ansible/issue.yml as per the following requirements:
+# Task 12 — Set `/etc/issue` by Host Group
 
-    a) The playbook runs on all inventory hosts.
-    b) The playbook replaces the contents of /etc/issue with a single line of text based on the host group:
+Create a playbook that writes a different environment label to `/etc/issue` depending on which host group a node belongs to.
 
-    i. On hosts in the dev host group, the line reads: Development
-    ii. On hosts in the test host group, the line reads: Test
-    iii. On hosts in the prod host group, the line reads: Production
+**Playbook path:** `/home/student/ansible/issue.yml`
+
+## Requirements
+
+### a) Target hosts
+
+The playbook must run on **all** inventory hosts.
+
+### b) File content
+
+Replace the entire contents of `/etc/issue` with a single line of text. The text depends on the host's group membership:
+
+| Host group | Content of `/etc/issue` |
+|------------|------------------------|
+| `dev` | `Development` |
+| `test` | `Test` |
+| `prod` | `Production` |

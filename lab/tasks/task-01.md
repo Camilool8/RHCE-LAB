@@ -1,13 +1,37 @@
-1. Install and configure Ansible on the control node (ansible-server): 
+# Task 1 — Install and Configure Ansible
 
-    a) Install the required packages.
-    b) Create a static inventory file called /home/student/ansible/inventory so that:
-      i) node1 is a member of the dev host group.
-      ii) node2 is a member of the test host group.
-      iii) node3 and node4 are the members of the prod host group.
-      iv) node5 is a member of the balancers host group.
-    c) The prod group is a member of the webservers host group.
-    d) Create a configuration file called /home/student/ansible/ansible.cfg so that:
-      i) The host inventory file is /home/student/ansible/inventory
-      ii) The default content collections directory is /home/student/ansible/mycollection
-      iii) The default roles directory is /home/student/ansible/roles
+Install and configure Ansible on the control node (`ansible-server`).
+
+## Requirements
+
+### a) Install the required packages
+
+Install `ansible-core` (and any other necessary packages) on the control node.
+
+### b) Create a static inventory file
+
+**Path:** `/home/student/ansible/inventory`
+
+Assign each node to its host group as follows:
+
+| Node | Host Group |
+|------|-----------|
+| `node1` | `dev` |
+| `node2` | `test` |
+| `node3` | `prod` |
+| `node4` | `prod` |
+| `node5` | `balancers` |
+
+- The `prod` group must be a **child** of the `webservers` group.
+
+### c) Create an Ansible configuration file
+
+**Path:** `/home/student/ansible/ansible.cfg`
+
+The configuration file must set the following defaults:
+
+| Setting | Value |
+|---------|-------|
+| Inventory file | `/home/student/ansible/inventory` |
+| Default collections directory | `/home/student/ansible/mycollection` |
+| Default roles directory | `/home/student/ansible/roles` |

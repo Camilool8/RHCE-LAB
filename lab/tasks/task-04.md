@@ -1,6 +1,26 @@
-4. Install the RHEL system roles package and create a playbook called /home/student/ansible/timesync.yml that:
+# Task 4 — Configure Time Synchronisation
 
-    a) Runs on all the managed hosts.
-    b) Uses the timesync role.
-    c) Configures the role to use the time server 172.25.254.250
-    d) Configures the role to set the iburst parameter as enabled.
+Use the RHEL system roles to configure NTP time synchronisation across all managed nodes.
+
+**Playbook path:** `/home/student/ansible/timesync.yml`
+
+## Requirements
+
+### a) Install the system roles package
+
+Install the `rhel-system-roles` package on the control node before writing the playbook.
+
+### b) Target hosts
+
+The playbook must run on **all** managed hosts.
+
+### c) Use the `timesync` role
+
+Apply the `timesync` role provided by `rhel-system-roles`.
+
+### d) Role configuration
+
+| Variable | Value |
+|----------|-------|
+| Time server | `172.25.254.250` |
+| `iburst` parameter | `enabled` (`true`) |

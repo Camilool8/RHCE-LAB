@@ -1,6 +1,19 @@
-15. Configure cron jobs:
+# Task 15 — Configure Cron Jobs
 
-    Create /home/student/ansible/cron.yml playbook as per the following requirements:
+Create a playbook that schedules a recurring cron job on all managed nodes.
 
-    a) This playbook runs on all managed nodes in the hostgroup.
-    b) Configure cronjob, which runs every 2 minutes and executes the following command: 'logger "EX294 exam in progress"' and run as user natasha.
+**Playbook path:** `/home/student/ansible/cron.yml`
+
+## Requirements
+
+### a) Target hosts
+
+The playbook must run on **all** managed nodes in the inventory.
+
+### b) Cron job specification
+
+| Setting | Value |
+|---------|-------|
+| Schedule | Every **2 minutes** |
+| Command | `logger "EX294 exam in progress"` |
+| Run as user | `natasha` |

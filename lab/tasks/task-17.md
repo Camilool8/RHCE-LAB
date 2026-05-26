@@ -1,21 +1,53 @@
-17. Create and use partitions:
+# Task 17 — Create and Use Partitions
 
-Create /home/student/ansible/partition.yml, which creates partitions on all
-the managed nodes:
+Create a playbook that partitions the extra data disk on every managed node and mounts it on `prod` nodes.
 
-    a) Each managed node has one additional raw (unpartitioned) data disk
-       attached. Do NOT hard-code the device name — the exact path differs
-       by hypervisor (it may be /dev/sdb, /dev/vdb, /dev/nvme0n2, …).
-       Discover the disk at runtime from ansible_facts.devices.
-    b) On the discovered disk, create a 1200 MiB primary partition,
-       partition number 1, and format it as ext4.
-    c) On hosts in the prod group, permanently mount that partition at
-       /srv (i.e. the mount must survive a reboot).
-    d) If 1200 MiB doesn't fit on the disk, print "Could not create
-       partition of that size" and create an 800 MiB partition instead.
-    e) If no raw data disk is found, print "this disk does not exist."
+**Playbook path:** `/home/student/ansible/partition.yml`
 
-Hint: ansible_facts.devices is a dict keyed by short device name (e.g.
-"vdb"), where each value has a 'partitions' dict (empty for raw disks)
-and a 'size' string. Filter to entries with no partitions and exclude
-the OS root disk.
+## Requirements
+
+### a) Target hosts
+
+The playbook must run on **all** managed nodes.
+
+### b) Discover the raw data disk at runtime
+
+Each managed node has one additional unpartitioned data disk attached. **Do not hard-code the device path** — the exact name differs by hypervisor (e.g. `/dev/sdb`, `/dev/vdb`, `/dev/nvme0n2`).
+
+Discover the disk at runtime using `ansible_facts.devices`:
+
+- Filter to entries that have **no existing partitions**.
+- Exclude the OS root disk.
+
+### c) Create a partition
+
+On the discovered disk:
+
+- Create a **primary partition**, partition number **1**.
+- Requested size: **1200 MiB**.
+- Format the partition as **ext4**.
+
+### d) Mount on `prod` nodes
+
+On hosts in the **`prod`** host group only:
+
+- Permanently mount the new partition at `/srv`.
+- The mount must survive a reboot (add an entry to `/etc/fstab`).
+
+### e) Size fallback
+
+If a `1200 MiB` partition cannot be created:
+
+1. Print the message: `Could not create partition of that size`
+2. Create an **800 MiB** partition instead.
+
+### f) Missing disk
+
+If no unpartitioned data disk is found on a node:
+
+- Print the message: `this disk does not exist`
+- Skip partitioning on that node.
+
+---
+
+> **Hint:** `ansible_facts.devices` is a dict keyed by short device name (e.g. `vdb`). Each value contains a `partitions` dict (empty for raw disks) and a `size` string. Use these fields to identify the correct target disk.

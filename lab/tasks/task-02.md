@@ -1,20 +1,31 @@
-2. Create a playbook called /home/student/ansible/yum-repo.yml. As a system administrator, you will need to install software on the managed nodes:
+# Task 2 — Configure YUM Repositories
 
-    a) Create the yum repositories on each of the managed nodes as per the following details:
-    b) NOTE: you need to create 2 repos (BaseOS & AppStream) in the managed nodes.
+Create a playbook that configures the required YUM repositories on all managed nodes.
 
-      BaseOS:
-      name: BaseOS
-      baseurl: file:///mnt/BaseOS/
-      description: Base OS Repo
-      gpgcheck: yes
-      enabled: no
-      key: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9
+**Playbook path:** `/home/student/ansible/yum-repo.yml`
 
-      AppStream:
-      name: AppStream
-      baseurl: file:///mnt/AppStream/
-      description: AppStream Repo
-      gpgcheck: yes
-      enabled: no
-      key: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9
+## Requirements
+
+Create **two** YUM repositories on every managed node using the details below.
+
+### Repository 1 — BaseOS
+
+| Parameter | Value |
+|-----------|-------|
+| `name` | `BaseOS` |
+| `baseurl` | `file:///mnt/BaseOS/` |
+| `description` | `Base OS Repo` |
+| `gpgcheck` | `yes` |
+| `enabled` | `no` |
+| `gpgkey` | `file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9` |
+
+### Repository 2 — AppStream
+
+| Parameter | Value |
+|-----------|-------|
+| `name` | `AppStream` |
+| `baseurl` | `file:///mnt/AppStream/` |
+| `description` | `AppStream Repo` |
+| `gpgcheck` | `yes` |
+| `enabled` | `no` |
+| `gpgkey` | `file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9` |

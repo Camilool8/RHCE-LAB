@@ -1,7 +1,32 @@
-8. Create a playbook called test.yml as per the following details:
+# Task 8 — Configure a Web Test Directory
 
-    a) The playbook runs on managed nodes in the test host group.
-    b) Create the directory /webtest with the group ownership webtest group and having the regular permissions rwx for the owner and group and rx for the others.
-    c) Apply the special permissions: set group ID
-    d) Symbolically link /var/www/html/webtest to /webtest directory.
-    e) Create the file /webtest/index.html with a single line of text that reads: Testing.
+Create a playbook that sets up a shared web test directory with the correct permissions and a symbolic link.
+
+**Playbook path:** `/home/student/ansible/test.yml`
+
+## Requirements
+
+### a) Target hosts
+
+The playbook must run on managed nodes in the **`test`** host group.
+
+### b) Create the `/webtest` directory
+
+- Group ownership must be set to the `webtest` group.
+- Standard permissions:
+  - Owner: `rwx`
+  - Group: `rwx`
+  - Others: `r-x`
+- Special permission: **Set Group ID (SGID)** bit must be applied.
+
+### c) Create a symbolic link
+
+Create a symbolic link at `/var/www/html/webtest` that points to `/webtest`.
+
+### d) Create the index file
+
+Create the file `/webtest/index.html` containing exactly the following single line of text:
+
+```
+Testing
+```

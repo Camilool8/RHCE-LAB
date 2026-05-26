@@ -1,12 +1,38 @@
-16. Create & use a logical volume:
+# Task 16 — Create and Use a Logical Volume
 
-Create a playbook called /home/student/ansible/lvm.yml that runs on all the managed nodes and does the following:
+Create a playbook that provisions a logical volume on all managed nodes, with graceful error handling when the volume group or required size is not available.
 
-    a) Creates a logical volume with the following requirements:
-    i. The logical volume is created in the research volume group.
-    ii. The logical volume name is data.
-    iii. The logical volume size is 1200 MiB.
-    iv. Format the logical volume with the ext4 file-system.
-    v. If the requested logical volume size cannot be created, the error message "could not create logical volume of that size" should be displayed and size 800 MiB should be used instead.
-    vi. If the volume research does not exist, the error message "volume group does not exist" should be displayed.
-    vii. Don’t mount the logical volume in any way.
+**Playbook path:** `/home/student/ansible/lvm.yml`
+
+## Requirements
+
+### a) Target hosts
+
+The playbook must run on **all** managed nodes.
+
+### b) Logical volume specification
+
+| Setting | Value |
+|---------|-------|
+| Volume group | `research` |
+| Logical volume name | `data` |
+| Requested size | `1200 MiB` |
+| Filesystem | `ext4` |
+
+### c) Size fallback
+
+If a `1200 MiB` logical volume cannot be created (e.g. insufficient space):
+
+1. Display the message: `could not create logical volume of that size`
+2. Create the logical volume at **`800 MiB`** instead.
+
+### d) Missing volume group
+
+If the `research` volume group does not exist on a node:
+
+- Display the message: `volume group does not exist`
+- Skip logical volume creation on that node.
+
+### e) Do not mount
+
+Do **not** mount the logical volume or add it to `/etc/fstab`.
