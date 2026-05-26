@@ -1,11 +1,24 @@
 # Use `ansible-navigator`
 
 `ansible-navigator` is the official Red Hat tool for running Ansible content
-in an execution environment. It is the tool used in the EX294 exam.
+inside an execution environment. It is the runner the EX294 exam uses, and
+the lab is configured to mirror that: **`execution-environment: true`** with
+the community EE image pre-pulled.
 
-The lab installs `ansible-navigator` on the control node and pre-pulls the
-community execution environment image
-(`ghcr.io/ansible/community-ansible-dev-tools:latest`).
+To make every role and collection the tasks depend on visible inside that
+container, the lab pre-configures three things:
+
+1. **Project auto-mount** — navigator always bind-mounts your project dir
+   (the cwd containing the playbook). So anything under
+   `~/ansible/mycollection/` and `~/ansible/roles/` is visible.
+2. **System-roles bind-mount** — an explicit `volume-mounts` entry maps
+   the host's `/usr/share/ansible/roles/` into the EE read-only, so the
+   `rhel-system-roles` RPM is accessible by its standard name.
+3. **`ansible.cfg`** — `collections_path = ./mycollection` and
+   `roles_path = /usr/share/ansible/roles:./roles` so the engine searches
+   all three locations once they're mounted.
+
+See [Why the bind-mount?](#why-the-bind-mount) for the gory detail.
 
 ## Confirm it works
 
@@ -26,34 +39,70 @@ current AAP/EPEL/pip channel provides. If you need to know which
 install path was used on your host, see
 [`ansible-navigator` install paths](../explanation/ansible-navigator-install.md).
 
-## Run a playbook in EE mode (recommended)
+## Run a playbook (default — inside the EE)
 
 ```bash
-ansible-navigator run ~/ansible/task-01.yml --mode stdout
+ansible-navigator run ~/ansible/timesync.yml
 ```
 
 What this does:
 
-- Spawns the `community-ansible-dev-tools` container.
-- Mounts your home directory into the container.
+- Reads `~/.ansible-navigator.yml`, sees `execution-environment.enabled: true`.
+- Spawns the `community-ansible-dev-tools` container under rootless `podman`.
+- Auto-mounts the project directory (everything in `~/ansible/`) into the
+  container, plus the explicit `/usr/share/ansible/roles:ro` bind-mount.
 - Runs the playbook with the container's `ansible-core`.
 
-Drop the `--mode stdout` to get the full TUI (text user interface) instead of
-plain text output.
+`mode: stdout` is set in the config, so you get plain text instead of the
+curses TUI. Pass `--mode interactive` to get the TUI back for any one run.
+
+## Why the bind-mount?
+
+The community EE image — `ghcr.io/ansible/community-ansible-dev-tools:latest`
+— ships `ansible-core` and a few collections, but **not**
+`rhel-system-roles`. Without help, EE-on runs of tasks 4 and 18 would fail
+with:
+
+```
+ERROR! the role 'rhel-system-roles.timesync' was not found
+```
+
+There are three ways to fix that; the lab uses option (1):
+
+1. **Bind-mount the host's RPM-installed roles into the EE** (what the lab
+   does). The `volume-mounts` entry in `~/.ansible-navigator.yml` maps
+   `/usr/share/ansible/roles → /usr/share/ansible/roles (ro)`. After that the
+   EE's `roles_path` lookup finds `rhel-system-roles.timesync` exactly as if
+   it were running on the host. We use `ro` not `:Z` because `student` can't
+   relabel a system path under SELinux.
+2. **Install the role into the project tree** —
+   `ansible-galaxy role install linux-system-roles.timesync -p ./roles/`.
+   `./roles/` is already auto-mounted by navigator, so the EE sees it. The
+   role then resolves as `linux-system-roles.timesync` (the Galaxy alias).
+3. **Use a Red Hat EE image that bundles the roles** —
+   `registry.redhat.io/ansible-automation-platform-25/ee-supported-rhel9:latest`.
+   Requires a Red Hat subscription and `podman login registry.redhat.io`. On
+   the real EX294 exam this is what's used and the bind-mount is unnecessary;
+   Red Hat additionally ships a `rhel-system-roles` collection tarball that
+   the candidate installs into the project's `./mycollection/`.
+
+`ansible.posix` (task 5, 11, 17) has the same EE-visibility problem and the
+same project-local fix — except the lab solves it via option 2 only, since
+it's lighter than a bind-mount: `ansible-galaxy collection install
+ansible.posix -p ./mycollection` puts it under the auto-mounted project tree.
 
 ## Run without the execution environment
 
-When you do not want a container — for example you are debugging a Python
-dependency on the host:
+When you want to debug a Python dependency on the host, or you just want
+plain `ansible-playbook` behaviour without the container layer:
 
 ```bash
-ansible-navigator run ~/ansible/task-01.yml --execution-environment false --mode stdout
+ansible-navigator run ~/ansible/timesync.yml --execution-environment false
 ```
 
-This uses the **host's** `ansible-core` (the one installed by `dnf` — on
-aarch64 often `/usr/local/bin/ansible`, otherwise `/usr/bin/ansible`). It is
-the same engine that `ansible-playbook` uses, so the result is identical to
-running `ansible-playbook` directly.
+This uses the host's `ansible-core` directly. Result is identical to
+`ansible-playbook timesync.yml`. The bind-mount becomes a no-op (host already
+has the roles) and SELinux/podman quirks disappear.
 
 ## Look up plugin documentation and examples
 
@@ -182,24 +231,6 @@ podman run --rm ghcr.io/ansible/community-ansible-dev-tools:latest \
        ansible --version
 ```
 
-## Use a different EE image
-
-Edit `/home/student/.ansible-navigator.yml`:
-
-```yaml
----
-ansible-navigator:
-  execution-environment:
-    enabled: true
-    image: registry.redhat.io/ansible-automation-platform-25/ee-supported-rhel9:latest
-    pull:
-      policy: missing
-    container-engine: podman
-```
-
-For Red Hat's official EE images you need a Red Hat subscription and to
-`podman login registry.redhat.io` first. See [Use RHEL with subscription](use-rhel-with-subscription.md).
-
 ## Common warnings to ignore
 
 These appear under `podman` running as `student` and are harmless:
@@ -217,7 +248,7 @@ sudo loginctl enable-linger student
 
 ## Related
 
-- [Work around the pip-ansible "Illegal instruction" crash](work-around-ansible-illegal-instruction.md) — why we recommend EE mode or the distro `ansible` on `PATH`.
+- [Work around the pip-ansible "Illegal instruction" crash](work-around-ansible-illegal-instruction.md) — why the lab prefers the distro `ansible` on `PATH` over `pip --user`.
 - [Explanation: `ansible-navigator` install paths](../explanation/ansible-navigator-install.md).
 - [Task 1 — Install and Configure Ansible](../../lab/tasks/task-01.md) — where ansible-navigator first gets installed and configured.
 - [Answer 1](../../lab/solutions/answer-01.md) — the `~/.ansible-navigator.yml` reference config.

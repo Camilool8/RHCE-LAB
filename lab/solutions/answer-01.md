@@ -68,6 +68,10 @@ ansible-navigator:
     pull:
       policy: missing
     container-engine: podman
+    volume-mounts:
+      - src: /usr/share/ansible/roles
+        dest: /usr/share/ansible/roles
+        options: ro
   mode: stdout
   playbook-artifact:
     enable: false
@@ -75,17 +79,43 @@ ansible-navigator:
 
 Why each key:
 
-- **`enabled: true`** — run the playbook inside the EE container, the
-  way the exam grader does. Use `false` only when you want to debug a
-  host-side Python issue.
+- **`enabled: true`** — EX294 runs every play inside an automation
+  execution environment, so the lab does too. Use `false` only when
+  you want to debug a host-side Python issue.
 - **`image:`** — the community EE image the lab pre-pulls. No
-  `podman login` needed (unlike `registry.redhat.io/.../ee-supported-rhel9`).
+  `podman login` needed (unlike
+  `registry.redhat.io/.../ee-supported-rhel9`, which on the real exam
+  is what Red Hat ships and ships with `rhel-system-roles` baked in).
 - **`pull.policy: missing`** — only pull when the image is absent.
   Keeps you offline-friendly after the first run.
+- **`container-engine: podman`** — `podman` is rootless on RHEL/AlmaLinux 9
+  and doesn't need a daemon; `docker` would need a privileged daemon
+  and isn't installed in the lab.
+- **`volume-mounts: …`** — *lab-specific*. The community EE doesn't
+  ship `rhel-system-roles`, so we bind-mount the host's
+  `/usr/share/ansible/roles/` (where the RPM installs them) into the
+  container at the same path, read-only. Without this, tasks 4 and 18
+  fail with *the role 'rhel-system-roles.timesync' was not found*. We
+  use `ro` (not `:Z`/`:z`) because the `student` user can't relabel a
+  system directory — `:Z` would error out with
+  *lsetxattr… operation not permitted*. On the real exam this trick is
+  unnecessary: Red Hat ships the system roles as a collection tarball
+  the candidate installs into `./mycollection/` (auto-mounted by
+  navigator), and Red Hat's EE image bundles them anyway.
 - **`mode: stdout`** — default to plain text instead of the curses
   TUI. Saves typing `--mode stdout` on every command.
 - **`playbook-artifact.enable: false`** — don't write a
-  `playbook-artifact-*.json` next to every run.
+  `<playbook>-artifact-<timestamp>.json` next to every run. The flag
+  equivalent is `--pae false`; setting it in the config means you
+  never have to remember it.
+
+The two automatic mount points navigator already provides — the project
+directory itself (so `./mycollection/` and `./roles/` Just Work) — are
+what makes `ansible.posix` (installed by `ansible-galaxy collection
+install ansible.posix -p ./mycollection`) and Galaxy roles (installed
+by `ansible-galaxy role install <role> -p ./roles/`) visible inside
+the EE without any extra config. Only RPM-installed roles need the
+explicit bind-mount.
 
 ### `inventory`
 

@@ -53,7 +53,7 @@ The configuration file must set the following defaults:
 Configure `ansible-navigator` so that every later task can be run with:
 
 ```bash
-ansible-navigator run <playbook>.yml --mode stdout
+ansible-navigator run <playbook>.yml
 ```
 
 Minimum settings the file must establish:
@@ -64,6 +64,19 @@ Minimum settings the file must establish:
 | `execution-environment.image` | `ghcr.io/ansible/community-ansible-dev-tools:latest` |
 | `execution-environment.container-engine` | `podman` |
 | `execution-environment.pull.policy` | `missing` |
+| `execution-environment.volume-mounts[0]` | `/usr/share/ansible/roles → /usr/share/ansible/roles (ro)` |
+| `mode` | `stdout` |
+| `playbook-artifact.enable` | `false` |
+
+`execution-environment.enabled: true` mirrors EX294, where every play runs
+inside an automation execution environment. The community EE image used by
+the lab does not ship `rhel-system-roles`, so the `volume-mounts` entry
+bind-mounts the host's role directory into the container — without it,
+tasks 4 and 18 fail with *role 'rhel-system-roles.X' was not found*. (On
+the real exam Red Hat ships the system roles as a collection tarball you
+install into your project; the bind-mount is the lab-side equivalent.)
+`playbook-artifact.enable: false` stops every run from dropping a
+`<playbook>-artifact-<timestamp>.json` next to your playbook.
 
 > The lab ships this file pre-configured for you (see
 > [Use ansible-navigator](../../docs/how-to/use-ansible-navigator.md)),

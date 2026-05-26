@@ -24,14 +24,22 @@ sudo dnf install -y rhel-system-roles
 #   /usr/share/ansible/roles/rhel-system-roles.timesync
 ```
 
-**B — via Galaxy** (works without the package; needs internet):
+The lab pre-installs this RPM and `~/.ansible-navigator.yml` bind-mounts
+`/usr/share/ansible/roles → /usr/share/ansible/roles (ro)` into the EE,
+so the role is visible by its `rhel-system-roles.timesync` name from
+inside `ansible-navigator run`. See
+[Use ansible-navigator → Why the bind-mount?](../../docs/how-to/use-ansible-navigator.md#why-the-bind-mount)
+for the mechanism.
+
+**B — via Galaxy** (works without the RPM; needs internet):
 
 ```bash
 ansible-galaxy role install linux-system-roles.timesync -p ./roles/
 ```
 
-The reference solution uses option B so the role lives under
-`./roles/` next to the play.
+This drops the role under the project's `./roles/` — auto-mounted by
+navigator — and you'd then reference it as `linux-system-roles.timesync`.
+Use this path if the lab repos are unreachable.
 
 ### `timesync.yml`
 
@@ -46,7 +54,7 @@ The reference solution uses option B so the role lives under
         iburst: true
 
   roles:
-    - role: linux-system-roles.timesync
+    - role: rhel-system-roles.timesync
 ```
 
 ### Run
@@ -72,9 +80,10 @@ ansible all -b -a 'chronyc -n sources'
   — the role manages that file and will overwrite your edits.
 - **`hosts: all`**, not `hosts: managed`. Time sync belongs on every
   node, including any future ones added to the inventory.
-- **`linux-system-roles.timesync` is an alias** for what RHEL 9 ships
-  as `rhel-system-roles.timesync`. Both resolve to the same role
-  source. The "linux" form is the portable name; pick it for content
-  you intend to share outside RHEL.
+- **`rhel-system-roles.timesync` and `linux-system-roles.timesync`** are
+  aliases — both directories ship in the `rhel-system-roles` RPM and
+  point at the same role source. The "rhel" form matches the task wording
+  ("the role provided by `rhel-system-roles`"); the "linux" form is the
+  portable name you'd use for content shared outside RHEL.
 - The variable used to be `timesync_ntp_servers`; on RHEL 10 / AAP 2.5
   the role uses the same name. No migration needed.

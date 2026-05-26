@@ -95,6 +95,13 @@ fi
 
 EE_IMAGE="ghcr.io/ansible/community-ansible-dev-tools:latest"
 
+# Lab default mirrors the EX294 exam: execution-environment=true. The
+# community EE doesn't ship rhel-system-roles, so we bind-mount the host's
+# /usr/share/ansible/roles into the container (read-only, no SELinux relabel
+# since student can't relabel a system path). Combined with the
+# project-local ./mycollection and ./roles (auto-mounted by navigator), this
+# makes rhel-system-roles.X, linux-system-roles.X, and ansible.posix all
+# resolve from inside the EE.
 cat > /home/student/.ansible-navigator.yml <<EOF
 ---
 ansible-navigator:
@@ -104,11 +111,18 @@ ansible-navigator:
     pull:
       policy: missing
     container-engine: podman
+    volume-mounts:
+      - src: /usr/share/ansible/roles
+        dest: /usr/share/ansible/roles
+        options: ro
+  mode: stdout
+  playbook-artifact:
+    enable: false
 EOF
 chown student:student /home/student/.ansible-navigator.yml
 
 runuser -l student -c "podman pull '$EE_IMAGE'" 2>&1 | tail -3 \
-  || echo "WARN: EE image pull failed — ansible-navigator --execution-environment false will still work"
+  || echo "WARN: EE image pull failed — flip enabled: false in ~/.ansible-navigator.yml to fall back to the host ansible"
 
 # aarch64: pip --user installs ansible under ~/.local/bin with a cryptography
 # wheel that can SIGILL in the lab VMs. Prefer the distro ansible-core first

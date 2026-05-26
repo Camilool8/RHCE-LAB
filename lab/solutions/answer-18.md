@@ -17,12 +17,21 @@
 
 ### Prerequisite — install the role
 
+The lab pre-installs the `rhel-system-roles` RPM and the navigator
+config bind-mounts `/usr/share/ansible/roles` into the EE, so the role
+at `/usr/share/ansible/roles/rhel-system-roles.selinux` is already
+reachable. If you ever need to rebuild it:
+
+```bash
+sudo dnf install -y rhel-system-roles
+```
+
+Galaxy fallback (works without the RPM; resolves as
+`linux-system-roles.selinux`):
+
 ```bash
 ansible-galaxy role install linux-system-roles.selinux -p ./roles/
 ```
-
-(Or `dnf install -y rhel-system-roles` if you prefer the RPM path —
-the role then lives at `/usr/share/ansible/roles/rhel-system-roles.selinux`.)
 
 ### `selinux.yml` — flip to permissive
 
@@ -38,7 +47,7 @@ the role then lives at `/usr/share/ansible/roles/rhel-system-roles.selinux`.)
       block:
         - name: First pass
           ansible.builtin.include_role:
-            name: linux-system-roles.selinux
+            name: rhel-system-roles.selinux
       rescue:
         - name: Bail out if the failure was something other than reboot
           ansible.builtin.fail:
@@ -52,7 +61,7 @@ the role then lives at `/usr/share/ansible/roles/rhel-system-roles.selinux`.)
 
         - name: Re-apply selinux role after reboot
           ansible.builtin.include_role:
-            name: linux-system-roles.selinux
+            name: rhel-system-roles.selinux
 ```
 
 ### `selinux2.yml` — flip to enforcing
@@ -71,7 +80,7 @@ Same shape, one variable changed:
       block:
         - name: First pass
           ansible.builtin.include_role:
-            name: linux-system-roles.selinux
+            name: rhel-system-roles.selinux
       rescue:
         - name: Bail out if the failure was something other than reboot
           ansible.builtin.fail:
@@ -85,7 +94,7 @@ Same shape, one variable changed:
 
         - name: Re-apply selinux role after reboot
           ansible.builtin.include_role:
-            name: linux-system-roles.selinux
+            name: rhel-system-roles.selinux
 ```
 
 (Real-life pattern: extract that `tasks:` block into a tiny wrapper
