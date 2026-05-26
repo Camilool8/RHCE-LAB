@@ -183,7 +183,7 @@ if (( REBOOT )); then
             fi
             print_score_detail
             task_footer "${TASK_NUM#0}" "$SCORE_POINTS" "$SCORE_MAX"
-            local capped_points=$(( SCORE_POINTS < TASK_POINTS ? SCORE_POINTS : TASK_POINTS ))
+            capped_points=$(( SCORE_POINTS < TASK_POINTS ? SCORE_POINTS : TASK_POINTS ))
             GRAND_POINTS=$((GRAND_POINTS + capped_points))
             GRAND_MAX=$((GRAND_MAX + TASK_POINTS))
             RESULTS_LINES+=("$(printf 'Task %s: %3d / %3d   %s' "$TASK_NUM" "$capped_points" "$TASK_POINTS" "$TASK_TITLE")")
