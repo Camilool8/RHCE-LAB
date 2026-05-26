@@ -44,6 +44,8 @@ BIOS_VERSION={{ ansible_facts['bios_version'] | default('NONE', true) }}
 
 ```bash
 ansible-playbook hwreport.yml
+# or, with the exam runner:
+ansible-navigator run hwreport.yml --mode stdout
 ```
 
 ### Verify

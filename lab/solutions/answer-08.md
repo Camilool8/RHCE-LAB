@@ -69,6 +69,8 @@ setgid directory you just created.
 
 ```bash
 ansible-playbook test.yml
+# or, with the exam runner:
+ansible-navigator run test.yml --mode stdout
 ```
 
 ### Verify

@@ -56,6 +56,8 @@
 
 ```bash
 ansible-playbook yum-repo.yml
+# or, with the exam runner:
+ansible-navigator run yum-repo.yml --mode stdout
 ```
 
 ### Verify

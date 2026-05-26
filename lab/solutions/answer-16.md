@@ -68,6 +68,8 @@ Already wired into `ansible.cfg` via `collections_path = ./mycollection`
 
 ```bash
 ansible-playbook lvm.yml
+# or, with the exam runner:
+ansible-navigator run lvm.yml --mode stdout
 ```
 
 ### Verify

@@ -43,6 +43,8 @@
 
 ```bash
 ansible-playbook issue.yml
+# or, with the exam runner:
+ansible-navigator run issue.yml --mode stdout
 ```
 
 ### Verify

@@ -107,6 +107,8 @@ ansible-galaxy collection install ansible.posix     -p ./mycollection/
 
 ```bash
 ansible-playbook partition.yml
+# or, with the exam runner:
+ansible-navigator run partition.yml --mode stdout
 ```
 
 ### Verify

@@ -39,17 +39,25 @@ the task description.
 
 ## Step 4 — Run the playbook
 
-```bash
-ansible-playbook ~/ansible/task-01.yml
-```
-
-Or, if you prefer the exam-realistic `ansible-navigator`:
+The exam runner is `ansible-navigator`. Use it by default:
 
 ```bash
 ansible-navigator run ~/ansible/task-01.yml --mode stdout
 ```
 
-See [Use ansible-navigator](use-ansible-navigator.md).
+Or, equivalently, run the same playbook with `ansible-playbook` —
+fewer moving parts, faster start, identical result when the EE image
+isn't doing anything you couldn't do on the host:
+
+```bash
+ansible-playbook ~/ansible/task-01.yml
+```
+
+Both runners exit non-zero on the same failures, so either works for
+the verifier. See [Use ansible-navigator](use-ansible-navigator.md)
+for the full subcommand reference (including
+`ansible-navigator doc` for looking up plugin docs and examples
+offline).
 
 ## Step 5 — Verify
 

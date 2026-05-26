@@ -45,6 +45,8 @@
 
 ```bash
 ansible-playbook packages.yml
+# or, with the exam runner:
+ansible-navigator run packages.yml --mode stdout
 ```
 
 ### Verify

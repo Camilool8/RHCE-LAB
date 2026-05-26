@@ -96,13 +96,18 @@ copy-paste per file.)
 ### Run
 
 ```bash
+# Task spec is explicit about which runner per file:
 ansible-playbook selinux.yml
-ansible-navigator run selinux2.yml -m stdout
+ansible-navigator run selinux2.yml --mode stdout
+
+# Either runner works for either file — these also pass:
+ansible-navigator run selinux.yml  --mode stdout
+ansible-playbook       selinux2.yml
 ```
 
-The `-m stdout` flag tells `ansible-navigator` to print the play
-recap directly instead of launching the curses TUI — essential for
-a graded environment.
+The `--mode stdout` flag (short form `-m stdout`) tells
+`ansible-navigator` to print the play recap directly instead of
+launching the curses TUI — essential for a graded environment.
 
 ### Verify
 

@@ -53,6 +53,8 @@ The reference solution uses option B so the role lives under
 
 ```bash
 ansible-playbook timesync.yml
+# or, with the exam runner:
+ansible-navigator run timesync.yml --mode stdout
 ```
 
 ### Verify

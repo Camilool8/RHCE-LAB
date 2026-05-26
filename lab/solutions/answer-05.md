@@ -105,6 +105,8 @@ Welcome to {{ ansible_facts['fqdn'] }} on {{ ansible_facts['default_ipv4']['addr
 
 ```bash
 ansible-playbook apache-role.yml
+# or, with the exam runner:
+ansible-navigator run apache-role.yml --mode stdout
 ```
 
 ### Verify

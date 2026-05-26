@@ -24,6 +24,8 @@
 
 ```bash
 ansible-playbook squid.yml
+# or, with the exam runner:
+ansible-navigator run squid.yml --mode stdout
 ```
 
 ### Verify

@@ -106,6 +106,10 @@ users:
 ```bash
 ansible-playbook create_user.yml          # no --vault-password-file needed
 ansible-playbook create_user.yml          # second run: changed=0 failed=0
+
+# or, with the exam runner — both runs the same way:
+ansible-navigator run create_user.yml --mode stdout
+ansible-navigator run create_user.yml --mode stdout
 ```
 
 ### Verify

@@ -46,6 +46,8 @@
 
 ```bash
 ansible-playbook gen_hosts.yml
+# or, with the exam runner:
+ansible-navigator run gen_hosts.yml --mode stdout
 ```
 
 ### Verify

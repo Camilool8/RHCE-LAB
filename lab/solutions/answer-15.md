@@ -46,6 +46,8 @@
 
 ```bash
 ansible-playbook cron.yml
+# or, with the exam runner:
+ansible-navigator run cron.yml --mode stdout
 ```
 
 ### Verify
