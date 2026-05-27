@@ -10,7 +10,7 @@
   fails fall back to Y" in Ansible. The `rescue:` only runs when the
   `block:` raises, so you don't have to predict failure conditions up
   front. `always:` runs whether `block:` or `rescue:` ran.
-- `ansible_facts.lvm` (gathered automatically when `lvm2` is installed)
+- `ansible_facts['lvm']` (gathered automatically when `lvm2` is installed)
   exposes the current VG / LV layout. Read it instead of shelling out
   to `vgs` / `lvs`.
 - The `community.general.lvol` and `community.general.filesystem`
@@ -37,7 +37,7 @@ Already wired into `ansible.cfg` via `collections_path = ./mycollection`
     - name: Fail loudly if VG 'research' does not exist
       ansible.builtin.fail:
         msg: volume group does not exist
-      when: "'research' not in ansible_facts.lvm.vgs | default({})"
+      when: "'research' not in ansible_facts['lvm']['vgs'] | default({})"
 
     - name: Create LV with the requested size, fall back if it doesn't fit
       block:
@@ -83,7 +83,7 @@ ansible all -b -a 'findmnt /dev/research/data || echo unmounted'
 
 ### Best-practice notes
 
-- **`ansible_facts.lvm.vgs`** instead of `ansible_lvm.vgs` — the
+- **`ansible_facts['lvm']['vgs']`** instead of `ansible_lvm['vgs']` — the
   bare-name form was deprecated in ansible-core 2.10; future-proof
   code uses the `ansible_facts.*` namespace.
 - **FQCN modules** (`community.general.lvol`, not `lvol`) — required

@@ -18,9 +18,14 @@ _node_has_repo() {
          grep -q '^\[${name}\]' /etc/yum.repos.d/*.repo 2>/dev/null"
 }
 _node_repo_has_kv() {
+    # Match `key=value` regardless of surrounding whitespace. The
+    # ansible.builtin.yum_repository module uses Python's configparser to
+    # write repo files, which formats keys with spaces around `=` by default
+    # (e.g. `baseurl = file:///mnt/BaseOS/`). Hand-written or template-rendered
+    # files often have no spaces. Tolerating both keeps the check honest.
     local node="$1" repo="$2" key="$3" value="$4"
     node_sudo "$node" \
-        "awk -v r=\"[${repo}]\" -v k=\"^${key}=${value}\\\$\" '\$0==r{f=1;next} /^\\[/{f=0} f && \$0~k{found=1} END{exit !found}' /etc/yum.repos.d/*.repo"
+        "awk -v r=\"[${repo}]\" -v k=\"^${key}[[:space:]]*=[[:space:]]*${value}[[:space:]]*\\\$\" '\$0==r{f=1;next} /^\\[/{f=0} f && \$0~k{found=1} END{exit !found}' /etc/yum.repos.d/*.repo"
 }
 
 task_verify() {

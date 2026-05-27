@@ -19,9 +19,17 @@ task_verify() {
     score_check 2 "role has templates/index.html.j2" test -f "$role/templates/index.html.j2"
 
     # Template references both HOSTNAME and IPADDRESS facts (grep liberally for any
-    # of the standard fact names — fqdn / inventory_hostname / hostname).
-    score_check 2 "template references a hostname fact"  grep -Eq 'ansible_(fqdn|hostname)|inventory_hostname' "$role/templates/index.html.j2"
-    score_check 2 "template references an IP fact"       grep -Eq 'default_ipv4|ansible_host' "$role/templates/index.html.j2"
+    # of the standard fact names). Accept both the bare-fact form
+    # (`ansible_fqdn`, `ansible_hostname`) and the namespaced form
+    # (`ansible_facts['fqdn']`, `ansible_facts.hostname`, …) — the latter is
+    # current best practice (bare forms deprecated in ansible-core 2.10), and
+    # the reference solution uses it.
+    score_check 2 "template references a hostname fact" \
+        grep -Eq "ansible_(fqdn|hostname|nodename)|ansible_facts[\\[.]['\"]?(fqdn|hostname|nodename)|inventory_hostname" \
+        "$role/templates/index.html.j2"
+    score_check 2 "template references an IP fact" \
+        grep -Eq "default_ipv4|ansible_host" \
+        "$role/templates/index.html.j2"
 
     local node
     for node in "${WEB_NODES[@]}"; do

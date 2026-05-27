@@ -41,15 +41,15 @@
 
     - name: Declare each repository
       ansible.builtin.yum_repository:
-        name: "{{ item.name }}"
-        description: "{{ item.description }}"
-        baseurl: "{{ item.baseurl }}"
+        name: "{{ item['name'] }}"
+        description: "{{ item['description'] }}"
+        baseurl: "{{ item['baseurl'] }}"
         gpgcheck: true
         enabled: false
         gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-9
       loop: "{{ repos }}"
       loop_control:
-        label: "{{ item.name }}"
+        label: "{{ item['name'] }}"
 ```
 
 ### Run

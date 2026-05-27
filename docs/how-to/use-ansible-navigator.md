@@ -91,6 +91,32 @@ same project-local fix — except the lab solves it via option 2 only, since
 it's lighter than a bind-mount: `ansible-galaxy collection install
 ansible.posix -p ./mycollection` puts it under the auto-mounted project tree.
 
+### `passlib` and the `password_hash` filter (task 14)
+
+`ansible.builtin.password_hash` (used by task 14 to hash vault passwords
+into `/etc/shadow`) needs the Python **`passlib`** library inside whichever
+interpreter runs the play. The community EE doesn't ship it, so EE-on runs
+of `create_user.yml` fail with:
+
+```
+The filter plugin 'ansible.builtin.password_hash' failed:
+Unable to encrypt nor hash, passlib must be installed: No module named 'passlib'
+```
+
+The lab provisioner installs `python3-passlib` on the control node's host
+Python (via dnf, with a pip fallback), so the workaround is to bypass the
+container for that one task:
+
+```bash
+ansible-navigator run create_user.yml \
+  --vault-password-file=./password.txt \
+  --execution-environment false
+```
+
+The real EX294 EE (`ee-supported-rhel9`) bundles `passlib`, so the bypass
+isn't needed on the exam. See [Answer 14](../../lab/solutions/answer-14.md)
+for the full rationale.
+
 ## Run without the execution environment
 
 When you want to debug a Python dependency on the host, or you just want
@@ -245,6 +271,106 @@ If you want them gone, enable lingering for the student user:
 ```bash
 sudo loginctl enable-linger student
 ```
+
+## Common runtime errors and fixes
+
+### `The 'community.general.yaml' callback plugin has been removed`
+
+Full message:
+
+```
+[ERROR]: The 'community.general.yaml' callback plugin has been removed.
+The plugin has been superseded by the option `result_format=yaml` in
+callback plugin ansible.builtin.default from ansible-core 2.13 onwards.
+This feature was removed from collection 'community.general' version 12.0.0.
+```
+
+**Cause.** Your `ansible.cfg` (typically `/home/student/ansible/ansible.cfg`)
+sets one of:
+
+```ini
+stdout_callback = yaml                       # short name -> community.general.yaml
+stdout_callback = community.general.yaml     # explicit FQCN
+```
+
+Both resolve to a callback that no longer exists in
+`community.general` 12.0.0+.
+
+**Fix.** Use the built-in `default` callback with `result_format = yaml`:
+
+```ini
+[defaults]
+stdout_callback = ansible.builtin.default
+result_format   = yaml
+```
+
+You get the same YAML rendering with no dependency on `community.general`.
+`result_format = yaml` has been available since `ansible-core` 2.13. To
+locate every config that still has the old setting:
+
+```bash
+grep -RIn "community.general.yaml\|stdout_callback\s*=\s*yaml" \
+  /etc/ansible/ ~/ansible/ ~/.ansible.cfg 2>/dev/null
+```
+
+See [Answer 1 — `ansible.cfg`](../../lab/solutions/answer-01.md) for the
+full reference config, and [Known task discrepancies → Task 1](../explanation/known-task-discrepancies.md#task-1--stdout_callback--yaml-now-uses-the-built-in-callback)
+for the rationale.
+
+### `No module named 'ansible_collections.redhat'` (tasks 4 & 18)
+
+Full message (with the role tasks line varying by which role you ran):
+
+```
+[WARNING]: Error loading plugin 'redhat.rhel_system_roles.sefcontext':
+No module named 'ansible_collections.redhat'
+[ERROR]: couldn't resolve module/action 'redhat.rhel_system_roles.sefcontext'.
+This often indicates a misspelling, missing collection, or incorrect module path.
+Origin: /usr/share/ansible/roles/rhel-system-roles.selinux/tasks/main.yml:129:3
+```
+
+**Cause.** `rhel-system-roles` 2.x+ (current on RHEL/AlmaLinux 9.5+)
+moved the actual modules into a bundled collection at
+`/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/`.
+The legacy role directory at `/usr/share/ansible/roles/rhel-system-roles.X/`
+now just orchestrates calls into that collection via FQCN. If
+`ansible-core` (host or EE) can't see the collection on its search path,
+the role loads but its first task fails.
+
+**Fix — host runs (`ansible-playbook`).** Extend `collections_path` in
+`/home/student/ansible/ansible.cfg` to include the system path:
+
+```ini
+[defaults]
+collections_path = ./mycollection:/usr/share/ansible/collections:~/.ansible/collections
+```
+
+`collections_path` **replaces** ansible's default search path, so
+listing only `./mycollection` hides the RPM-installed collection.
+
+**Fix — navigator + EE runs (`ansible-navigator run`).** Bind-mount
+the host's collections directory into the EE container, same shape as
+the existing roles mount. In `/home/student/.ansible-navigator.yml`:
+
+```yaml
+ansible-navigator:
+  execution-environment:
+    volume-mounts:
+      - src: /usr/share/ansible/roles
+        dest: /usr/share/ansible/roles
+        options: ro
+      - src: /usr/share/ansible/collections
+        dest: /usr/share/ansible/collections
+        options: ro
+```
+
+(The lab's `scripts/control/setup-control.sh` writes this version of
+the file on fresh provisioning. If you provisioned before the fix
+landed, edit the file in place and re-run.)
+
+See [Answer 1](../../lab/solutions/answer-01.md) for the canonical
+configs and [Known task discrepancies → Tasks 4 & 18](../explanation/known-task-discrepancies.md#tasks-4--18--rhel-system-roles-2x-needs-the-bundled-collection-on-the-search-path)
+for the full rationale.
 
 ## Related
 

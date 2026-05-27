@@ -19,6 +19,18 @@ fi
 dnf install -y oniguruma-devel 2>/dev/null \
   || echo "INFO: oniguruma-devel not available; pip onigurumacffi build may fail"
 
+# passlib is required by ansible's password_hash() filter (task 14). The
+# community EE image does not ship it, so we install it on the host's
+# system Python where `ansible-playbook` and `ansible-navigator
+# --execution-environment false` resolve it. The official Red Hat EE
+# (ee-supported-rhel9) bundles passlib, so on the real EX294 exam this
+# install is unnecessary.
+if ! dnf install -y python3-passlib 2>/dev/null; then
+  echo "INFO: python3-passlib RPM unavailable; falling back to pip"
+  python3 -m pip install passlib 2>&1 | tail -3 \
+    || echo "WARN: passlib install failed — password_hash() filter will error"
+fi
+
 install -d -m 700 -o student -g student /home/student/.ssh
 install -m 600 -o student -g student /tmp/RH294-LAB     /home/student/.ssh/RH294-LAB
 install -m 644 -o student -g student /tmp/RH294-LAB.pub /home/student/.ssh/RH294-LAB.pub
@@ -96,12 +108,20 @@ fi
 EE_IMAGE="ghcr.io/ansible/community-ansible-dev-tools:latest"
 
 # Lab default mirrors the EX294 exam: execution-environment=true. The
-# community EE doesn't ship rhel-system-roles, so we bind-mount the host's
-# /usr/share/ansible/roles into the container (read-only, no SELinux relabel
-# since student can't relabel a system path). Combined with the
-# project-local ./mycollection and ./roles (auto-mounted by navigator), this
-# makes rhel-system-roles.X, linux-system-roles.X, and ansible.posix all
-# resolve from inside the EE.
+# community EE doesn't ship rhel-system-roles, so we bind-mount two host
+# paths into the container (read-only, no SELinux relabel since student
+# can't relabel a system path):
+#   - /usr/share/ansible/roles        -> the legacy role dirs
+#                                        (rhel-system-roles.timesync, …)
+#   - /usr/share/ansible/collections  -> the redhat.rhel_system_roles
+#                                        collection that rhel-system-roles
+#                                        2.x+ now calls internally via FQCN.
+# Without the collections mount, tasks 4 / 18 fail with
+# "No module named 'ansible_collections.redhat'" the first time the role
+# tries to invoke e.g. redhat.rhel_system_roles.sefcontext.
+# Combined with the project-local ./mycollection and ./roles (auto-mounted
+# by navigator), this makes rhel-system-roles.X, linux-system-roles.X, and
+# ansible.posix all resolve from inside the EE.
 cat > /home/student/.ansible-navigator.yml <<EOF
 ---
 ansible-navigator:
@@ -114,6 +134,9 @@ ansible-navigator:
     volume-mounts:
       - src: /usr/share/ansible/roles
         dest: /usr/share/ansible/roles
+        options: ro
+      - src: /usr/share/ansible/collections
+        dest: /usr/share/ansible/collections
         options: ro
   mode: stdout
   playbook-artifact:

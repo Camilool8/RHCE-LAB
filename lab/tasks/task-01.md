@@ -43,8 +43,8 @@ The configuration file must set the following defaults:
 | Setting | Value |
 |---------|-------|
 | Inventory file | `/home/student/ansible/inventory` |
-| Default collections directory | `/home/student/ansible/mycollection` |
-| Default roles directory | `/home/student/ansible/roles` |
+| Default collections directory | `/home/student/ansible/mycollection` (must appear in `collections_path`; additional system paths like `/usr/share/ansible/collections` may also appear) |
+| Default roles directory | `/home/student/ansible/roles` (must appear in `roles_path`; additional system paths like `/usr/share/ansible/roles` may also appear) |
 
 ### d) Configure `ansible-navigator`
 
@@ -65,16 +65,22 @@ Minimum settings the file must establish:
 | `execution-environment.container-engine` | `podman` |
 | `execution-environment.pull.policy` | `missing` |
 | `execution-environment.volume-mounts[0]` | `/usr/share/ansible/roles → /usr/share/ansible/roles (ro)` |
+| `execution-environment.volume-mounts[1]` | `/usr/share/ansible/collections → /usr/share/ansible/collections (ro)` |
 | `mode` | `stdout` |
 | `playbook-artifact.enable` | `false` |
 
 `execution-environment.enabled: true` mirrors EX294, where every play runs
 inside an automation execution environment. The community EE image used by
-the lab does not ship `rhel-system-roles`, so the `volume-mounts` entry
-bind-mounts the host's role directory into the container — without it,
-tasks 4 and 18 fail with *role 'rhel-system-roles.X' was not found*. (On
-the real exam Red Hat ships the system roles as a collection tarball you
-install into your project; the bind-mount is the lab-side equivalent.)
+the lab does not ship `rhel-system-roles`, so the **two** `volume-mounts`
+entries bind-mount the host's role *and* collection directories into the
+container. Without the roles mount, tasks 4 and 18 fail with
+*role 'rhel-system-roles.X' was not found*. Without the collections mount,
+modern `rhel-system-roles` (2.x+) roles load but then fail with
+*No module named 'ansible_collections.redhat'* because they internally call
+modules from the bundled `redhat.rhel_system_roles` collection that the
+RPM installs at `/usr/share/ansible/collections/`. (On the real exam Red
+Hat ships the system roles as a collection tarball you install into your
+project; the bind-mount is the lab-side equivalent.)
 `playbook-artifact.enable: false` stops every run from dropping a
 `<playbook>-artifact-<timestamp>.json` next to your playbook.
 

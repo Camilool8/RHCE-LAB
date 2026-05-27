@@ -106,6 +106,80 @@ the vendor online repos.
 See [`docs/explanation/offline-mirror.md`](offline-mirror.md) for the
 full design rationale.
 
+### Task 1 — `stdout_callback = yaml` now uses the built-in callback
+
+`ansible.cfg` snippets in older RHCE study material (and in this lab's
+previous revision) used:
+
+```ini
+stdout_callback = yaml
+```
+
+That short name resolved to `community.general.yaml`, a callback plugin
+that was **removed in `community.general` 12.0.0**. On any lab whose
+EE / host has the current `community.general`, an `ansible-playbook` (or
+`ansible-navigator run`) invocation now fails up front with:
+
+```
+[ERROR]: The 'community.general.yaml' callback plugin has been removed.
+The plugin has been superseded by the option `result_format=yaml` in
+callback plugin ansible.builtin.default from ansible-core 2.13 onwards.
+This feature was removed from collection 'community.general' version 12.0.0.
+```
+
+**Fix** (in `files/ansible.cfg` and `lab/solutions/answer-01.md`):
+
+```ini
+[defaults]
+stdout_callback = ansible.builtin.default
+result_format   = yaml
+```
+
+The built-in `default` callback plus `result_format = yaml` (available
+since `ansible-core` 2.13) gives the same human-readable YAML output the
+old `yaml` callback did, with no dependency on `community.general`. If
+you already have a hand-written `ansible.cfg` from an older guide, swap
+those two lines in and the error disappears.
+
+### Tasks 4 & 18 — `rhel-system-roles` 2.x needs the bundled collection on the search path
+
+Starting with `rhel-system-roles` 2.0 (current on RHEL/AlmaLinux 9.5+),
+the legacy role directories under `/usr/share/ansible/roles/` no longer
+contain self-contained tasks — they `import_role` and call modules from
+the **`redhat.rhel_system_roles`** collection that the same RPM now
+ships at `/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/`.
+If `ansible-core` can't see that collection, the role loads but its
+first real task explodes with:
+
+```
+[WARNING]: Error loading plugin 'redhat.rhel_system_roles.sefcontext':
+No module named 'ansible_collections.redhat'
+[ERROR]: couldn't resolve module/action 'redhat.rhel_system_roles.sefcontext'.
+Origin: /usr/share/ansible/roles/rhel-system-roles.selinux/tasks/main.yml:129:3
+```
+
+The lab's previous `ansible.cfg` set `collections_path = ./mycollection`,
+which **replaces** ansible-core's default search path and hides the
+RPM-installed collection. The previous `~/.ansible-navigator.yml` only
+bind-mounted `/usr/share/ansible/roles` into the EE, so the same error
+hit navigator runs of tasks 4 / 18 too.
+
+**Fix** — two-pronged because there are two runtimes (host vs EE):
+
+- `files/ansible.cfg` and `lab/solutions/answer-01.md` now use
+  `collections_path = ./mycollection:/usr/share/ansible/collections:~/.ansible/collections`
+  so host-side `ansible-playbook` finds the collection.
+- `scripts/control/setup-control.sh` and the navigator YAML in
+  `lab/solutions/answer-01.md` now add a second bind-mount,
+  `/usr/share/ansible/collections → /usr/share/ansible/collections (ro)`,
+  so navigator-in-EE finds it too.
+
+On the real EX294 exam neither workaround is required — Red Hat's
+`ee-supported-rhel9` image bundles `redhat.rhel_system_roles` already,
+and the candidate installs an updated collection tarball into the
+project's `./mycollection/`. The lab's bind-mount is the equivalent
+for the community EE image.
+
 ### Best-practice sweep across all 18 solutions
 
 Every answer file gained a "What this teaches" section and best-practice

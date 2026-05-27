@@ -18,13 +18,28 @@
 ### Prerequisite — install the role
 
 The lab pre-installs the `rhel-system-roles` RPM and the navigator
-config bind-mounts `/usr/share/ansible/roles` into the EE, so the role
-at `/usr/share/ansible/roles/rhel-system-roles.selinux` is already
-reachable. If you ever need to rebuild it:
+config bind-mounts both `/usr/share/ansible/roles` and
+`/usr/share/ansible/collections` into the EE, so the role at
+`/usr/share/ansible/roles/rhel-system-roles.selinux` **and** the
+bundled `redhat.rhel_system_roles` collection it calls internally are
+both reachable. If you ever need to rebuild it:
 
 ```bash
 sudo dnf install -y rhel-system-roles
 ```
+
+> **Why the second mount.** Starting with `rhel-system-roles` 2.x, the
+> selinux role's `tasks/main.yml` references
+> `redhat.rhel_system_roles.sefcontext` and friends from a private
+> collection the RPM ships at
+> `/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/`.
+> Without that path on `collections_path` (host runs) or bind-mounted
+> into the EE (navigator runs), the role loads but the first task fails
+> with *No module named 'ansible_collections.redhat'*. The lab's
+> `ansible.cfg` extends `collections_path` and
+> `~/.ansible-navigator.yml` adds the bind-mount to cover both runners
+> — see [Answer 1](answer-01.md) for the exact configs and
+> [Known task discrepancies → Tasks 4 & 18](../../docs/explanation/known-task-discrepancies.md#tasks-4--18--rhel-system-roles-2x-needs-the-bundled-collection-on-the-search-path).
 
 Galaxy fallback (works without the RPM; resolves as
 `linux-system-roles.selinux`):

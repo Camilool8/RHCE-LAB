@@ -8,19 +8,19 @@
 ### What this teaches
 
 - **Device-name portability.** AlmaLinux 9 boots `/dev/sda` on
-  VirtualBox/Parallels, `/dev/vda` on libvirt, `/dev/nvme0n1` on
-  VMware. Real production playbooks behave the same way. Discover at
-  runtime; never hard-code `/dev/sdb`.
-- **Filtering `ansible_facts.devices`.** It's a dict keyed by short
-  device name. Each entry exposes `partitions` (a dict — empty for a
-  raw disk), `size` (a human string), `removable`, etc. The "first
-  unused data disk" is the first entry whose `partitions` is empty and
-  whose name isn't the root disk.
+VirtualBox/Parallels, `/dev/vda` on libvirt, `/dev/nvme0n1` on
+VMware. Real production playbooks behave the same way. Discover at
+runtime; never hard-code `/dev/sdb`.
+- **Filtering `ansible_facts['devices']`.** It's a dict keyed by short
+device name. Each entry exposes `partitions` (a dict — empty for a
+raw disk), `size` (a human string), `removable`, etc. The "first
+unused data disk" is the first entry whose `partitions` is empty and
+whose name isn't the root disk.
 - **Persistent mount with `ansible.posix.mount`.** `state: mounted`
-  writes `/etc/fstab` AND issues the mount; `state: present` writes
-  fstab but does not mount. Use `mounted` whenever the task says
-  "permanent" or "survives reboot".
-- **`block / rescue`** for fall-back partition sizes.
+writes `/etc/fstab` AND issues the mount; `state: present` writes
+fstab but does not mount. Use `mounted` whenever the task says
+"permanent" or "survives reboot".
+- `**block / rescue`** for fall-back partition sizes.
 
 ### Prerequisites
 
@@ -41,7 +41,7 @@ ansible-galaxy collection install ansible.posix     -p ./mycollection/
     - name: Pick the first unpartitioned non-root data disk
       ansible.builtin.set_fact:
         data_disk: >-
-          {{ (ansible_facts.devices
+          {{ (ansible_facts['devices']
               | dict2items
               | rejectattr('value.partitions', 'truthy')
               | rejectattr('key', 'match', '^(sda|vda|nvme0n1|sr|loop|fd|dm-).*')
@@ -127,18 +127,19 @@ ansible test,dev,balancers -b -m shell -a 'findmnt /srv || echo not-mounted'
 
 ### Best-practice notes
 
-- **`group_names`** (a per-host list) instead of looking the host up in
-  `groups['prod']`. Reads more naturally.
-- **`fs_type: ext4` on the `parted` task** writes the GPT partition-type
-  label; **`community.general.filesystem`** does the actual mkfs.
-  Both — `parted` alone won't lay down a usable filesystem.
+- `**group_names**` (a per-host list) instead of looking the host up in
+`groups['prod']`. Reads more naturally.
+- `**fs_type: ext4` on the `parted` task** writes the GPT partition-type
+label; `**community.general.filesystem`** does the actual mkfs.
+Both — `parted` alone won't lay down a usable filesystem.
 - **Set `data_part_path` once** as a fact instead of repeating
-  `{{ data_disk_path }}1` everywhere — keeps NVMe-vs-SCSI naming logic
-  in one place.
-- **`state: mounted`** on `ansible.posix.mount` writes fstab AND
-  performs the mount in a single idempotent task. Don't combine
-  `state: present` with a separate `command: mount …`.
+`{{ data_disk_path }}1` everywhere — keeps NVMe-vs-SCSI naming logic
+in one place.
+- `**state: mounted`** on `ansible.posix.mount` writes fstab AND
+performs the mount in a single idempotent task. Don't combine
+`state: present` with a separate `command: mount …`.
 - This task is the lab's canonical example of "your playbook is
-  expected to work across hypervisors." See
-  [`docs/explanation/known-task-discrepancies.md`](../../docs/explanation/known-task-discrepancies.md)
-  for the history.
+expected to work across hypervisors." See
+`[docs/explanation/known-task-discrepancies.md](../../docs/explanation/known-task-discrepancies.md)`
+for the history.
+

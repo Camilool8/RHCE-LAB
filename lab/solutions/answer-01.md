@@ -72,6 +72,9 @@ ansible-navigator:
       - src: /usr/share/ansible/roles
         dest: /usr/share/ansible/roles
         options: ro
+      - src: /usr/share/ansible/collections
+        dest: /usr/share/ansible/collections
+        options: ro
   mode: stdout
   playbook-artifact:
     enable: false
@@ -92,11 +95,19 @@ Why each key:
   and doesn't need a daemon; `docker` would need a privileged daemon
   and isn't installed in the lab.
 - **`volume-mounts: …`** — *lab-specific*. The community EE doesn't
-  ship `rhel-system-roles`, so we bind-mount the host's
-  `/usr/share/ansible/roles/` (where the RPM installs them) into the
-  container at the same path, read-only. Without this, tasks 4 and 18
-  fail with *the role 'rhel-system-roles.timesync' was not found*. We
-  use `ro` (not `:Z`/`:z`) because the `student` user can't relabel a
+  ship `rhel-system-roles`, so we bind-mount **two** host paths into the
+  container at the same path, read-only:
+  - `/usr/share/ansible/roles/` — where the `rhel-system-roles` RPM
+    drops the legacy role directories (`rhel-system-roles.timesync`,
+    `rhel-system-roles.selinux`, …). Without this, tasks 4 and 18 fail
+    with *the role 'rhel-system-roles.timesync' was not found*.
+  - `/usr/share/ansible/collections/` — where the same RPM (2.x+) also
+    drops the bundled `redhat.rhel_system_roles` collection that those
+    legacy roles now call internally via FQCN
+    (`redhat.rhel_system_roles.sefcontext`, etc.). Without this mount
+    the role *loads* but its first task fails with
+    *No module named 'ansible_collections.redhat'*.
+  We use `ro` (not `:Z`/`:z`) because the `student` user can't relabel a
   system directory — `:Z` would error out with
   *lsetxattr… operation not permitted*. On the real exam this trick is
   unnecessary: Red Hat ships the system roles as a collection tarball
@@ -114,8 +125,8 @@ directory itself (so `./mycollection/` and `./roles/` Just Work) — are
 what makes `ansible.posix` (installed by `ansible-galaxy collection
 install ansible.posix -p ./mycollection`) and Galaxy roles (installed
 by `ansible-galaxy role install <role> -p ./roles/`) visible inside
-the EE without any extra config. Only RPM-installed roles need the
-explicit bind-mount.
+the EE without any extra config. Only RPM-installed roles and their
+bundled collections need the explicit bind-mount.
 
 ### `inventory`
 
@@ -142,14 +153,14 @@ prod
 ```ini
 [defaults]
 inventory            = ./inventory
-roles_path           = ./roles
-collections_path     = ./mycollection
+roles_path           = ./roles:/usr/share/ansible/roles
+collections_path     = ./mycollection:/usr/share/ansible/collections:~/.ansible/collections
 remote_user          = student
 private_key_file     = ~/.ssh/RH294-LAB
 host_key_checking    = False
-vault_password_file  = ./password.txt
 nocows               = True
-stdout_callback      = yaml
+stdout_callback      = ansible.builtin.default
+result_format        = yaml
 deprecation_warnings = False
 retry_files_enabled  = False
 forks                = 10
@@ -176,10 +187,6 @@ EE image, so it never lags behind the modules you actually run.
 ```bash
 # Show full docs (synopsis + parameters + EXAMPLES + return values)
 ansible-navigator doc ansible.builtin.yum_repository --mode stdout
-
-# Jump straight to the EXAMPLES section — exam workflow
-ansible-navigator doc ansible.builtin.yum_repository --mode stdout \
-  | sed -n '/^EXAMPLES:/,/^RETURN/p'
 
 # List every plugin the EE knows about
 ansible-navigator doc -l --mode stdout
@@ -232,8 +239,16 @@ examples](../../docs/how-to/use-ansible-navigator.md#look-up-plugin-documentatio
   `ansible-playbook create_user.yml` into a one-liner. Task 14's
   reference solution then doesn't need to pass `--vault-password-file`
   every time — the grader runs the same shorthand.
-- **`stdout_callback = yaml`** makes module output human-readable
-  during practice. Switch to `json` in CI.
+- **`stdout_callback = ansible.builtin.default` + `result_format = yaml`**
+  makes module output human-readable during practice. The shorter
+  `stdout_callback = yaml` you may see in older guides relies on the
+  `community.general.yaml` callback, which was **removed in
+  `community.general` 12.0.0** (you'll get
+  *"The 'community.general.yaml' callback plugin has been removed"*
+  the next time you run a playbook). The built-in `default` callback
+  with `result_format = yaml` is the supported drop-in replacement —
+  same YAML rendering, no extra collection. Switch `result_format` to
+  `json` in CI.
 - **`forks = 10`** parallelizes across the 5 managed nodes (default
   is 5 — fine, but 10 leaves headroom).
 - The cfg lives at **`./ansible.cfg`** (current directory) so it only

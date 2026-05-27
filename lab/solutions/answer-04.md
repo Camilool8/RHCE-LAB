@@ -25,11 +25,19 @@ sudo dnf install -y rhel-system-roles
 ```
 
 The lab pre-installs this RPM and `~/.ansible-navigator.yml` bind-mounts
-`/usr/share/ansible/roles → /usr/share/ansible/roles (ro)` into the EE,
-so the role is visible by its `rhel-system-roles.timesync` name from
-inside `ansible-navigator run`. See
+**both** `/usr/share/ansible/roles → /usr/share/ansible/roles (ro)` and
+`/usr/share/ansible/collections → /usr/share/ansible/collections (ro)`
+into the EE, so the role is visible by its `rhel-system-roles.timesync`
+name and the `redhat.rhel_system_roles` collection it now internally
+calls into is also reachable from inside `ansible-navigator run`. The
+matching `collections_path = ./mycollection:/usr/share/ansible/collections:~/.ansible/collections`
+in `ansible.cfg` is what makes the same role work under host-side
+`ansible-playbook`. Without that path extension, you get
+*No module named 'ansible_collections.redhat'*. See
 [Use ansible-navigator → Why the bind-mount?](../../docs/how-to/use-ansible-navigator.md#why-the-bind-mount)
-for the mechanism.
+for the mechanism and
+[Known task discrepancies → Tasks 4 & 18](../../docs/explanation/known-task-discrepancies.md#tasks-4--18--rhel-system-roles-2x-needs-the-bundled-collection-on-the-search-path)
+for the full rationale.
 
 **B — via Galaxy** (works without the RPM; needs internet):
 
