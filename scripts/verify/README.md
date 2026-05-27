@@ -70,6 +70,8 @@ All commands below run on the control node as the `student` user.
 | `TIME_SERVER`        | `172.25.254.250`              | task 4 ntp server                    |
 | `VAULT_PW_INITIAL`   | `rh294lab`                    | task 9 starting vault password       |
 | `VAULT_PW_REKEYED`   | `ansible`                     | task 13 post-rekey vault password    |
+| `REBOOT_WAIT_SECS`   | `600`                         | per-node ceiling on the post-reboot SSH-up wait (`--reboot`). Bump on slow hypervisors. |
+| `REBOOT_DOWN_SECS`   | `30`                          | per-node ceiling on the "wait for SSH to drop" phase. Bump if a playbook just rebooted nodes and reboots are stacking. |
 | `NO_COLOR=1`         | (unset)                       | strip ANSI escapes for CI logs       |
 
 ## Point allocation

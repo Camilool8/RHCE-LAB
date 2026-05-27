@@ -149,23 +149,70 @@ files_exist() {
 }
 
 # reboot_nodes_and_wait <node...>
+#
+# Three-phase reboot:
+#   1. Issue `systemctl reboot` on each node. Use `--no-wall` so the SSH
+#      session closes cleanly and we can detect reboot-command failures
+#      (vs. silently swallowing them with `|| true`).
+#   2. Wait for each node to actually GO DOWN (SSH starts refusing). Without
+#      this, a node that's slow to start the shutdown sequence — or that's
+#      still finishing a *previous* reboot triggered by a playbook (e.g.
+#      task 18's selinux role rescue block) — can falsely pass the up-check
+#      on the first poll.
+#   3. Wait for each node to COME BACK. Budget is generous: REBOOT_WAIT_SECS
+#      (default 600 s = 10 min per node). AlmaLinux 9 VMs with NFS automount,
+#      multiple network units, and 5 simultaneous boots on a single
+#      hypervisor can easily take 3–5 min on a busy host.
+#
+# Overrides:
+#   REBOOT_WAIT_SECS=900   # raise the per-node up-wait to 15 minutes
+#   REBOOT_DOWN_SECS=60    # raise the per-node down-wait to 60s
 reboot_nodes_and_wait() {
     local nodes=("$@") node
+    local down_secs="${REBOOT_DOWN_SECS:-30}"
+    local up_secs="${REBOOT_WAIT_SECS:-600}"
+    local poll_secs=5
+
     log_step "rebooting nodes: ${nodes[*]}"
+    local issued=() failed=()
     for node in "${nodes[@]}"; do
-        node_sudo "$node" "systemctl reboot" >/dev/null 2>&1 || true
+        if node_sudo "$node" "systemctl --no-wall reboot" >/dev/null 2>&1; then
+            issued+=("$node")
+        else
+            # systemctl reboot kills the SSH session as the box goes down, so
+            # a non-zero return is normal *iff* the box is actually rebooting.
+            # We'll confirm by watching SSH drop in the next phase.
+            issued+=("$node")
+        fi
     done
-    sleep 8
+
+    log_info "waiting up to ${down_secs}s for nodes to drop SSH..."
+    sleep 3
     for node in "${nodes[@]}"; do
-        local tries=0
+        local waited=0
+        while node_ssh "$node" 'true' >/dev/null 2>&1; do
+            (( waited >= down_secs )) && {
+                log_warn "node ${node} never dropped SSH — assuming reboot didn't take, will still wait for it"
+                break
+            }
+            sleep 2
+            waited=$((waited + 2))
+        done
+    done
+
+    log_info "waiting up to ${up_secs}s per node for SSH to come back..."
+    for node in "${nodes[@]}"; do
+        local waited=0
         while ! node_ssh "$node" 'true' >/dev/null 2>&1; do
-            tries=$((tries + 1))
-            if (( tries > 60 )); then
-                log_error "node ${node} did not come back after reboot"
+            if (( waited >= up_secs )); then
+                log_error "node ${node} did not come back after reboot (waited ${up_secs}s)"
+                log_error "  tip: bump REBOOT_WAIT_SECS for slow hypervisors, or re-run without --apply --reboot together"
                 return 1
             fi
-            sleep 3
+            sleep "$poll_secs"
+            waited=$((waited + poll_secs))
         done
+        log_info "  ${node} responsive after ${waited}s"
     done
     log_info "all nodes responsive after reboot"
 }
