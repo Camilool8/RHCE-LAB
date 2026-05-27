@@ -31,4 +31,4 @@ Full documentation index: [`docs/`](docs/README.md).
 
 ## License
 
-MIT.
+Released under the [MIT License](LICENSE.md). Copyright (c) 2026 Camilo Joga.
